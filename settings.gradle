@@ -1,0 +1,5 @@
+rootProject.name = 'MCP-Resource-Downloader'
+
+include(
+        ':GUI'
+)
