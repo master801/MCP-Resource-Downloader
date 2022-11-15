@@ -12,7 +12,7 @@ import java.util.List;
 
 public record Version(
         AssetIndex assetIndex,
-        String assets,
+        Version.Assets assets,
         int complianceLevel,
         Version.Downloads downloads,
         String id,
@@ -20,7 +20,7 @@ public record Version(
         Library[] libraries,
         String mainClass,
         String minecraftArguments,
-        String minimumLauncherVersion,
+        int minimumLauncherVersion,
         String releaseTime,
         String time,
         String type
@@ -34,19 +34,21 @@ public record Version(
         @Override
         public Version fromJson(final JsonReader reader) throws IOException {
             AssetIndex assetIndex = null;
-            String assets = null;
+            Version.Assets assets = null;
             int complianceLevel = -1;
             Version.Downloads downloads = null;
             String id = null;
             JavaVersion javaVersion = null;
             Library[] libraries = null;
-            String mainClass = null, minecraftArguments = null, minimumLauncherVersion = null, releaseTime = null, time = null, type = null;
+            String mainClass = null, minecraftArguments = null;
+            int minimumLauncherVersion = -1;
+            String releaseTime = null, time = null, type = null;
 
             reader.beginObject();
             while(reader.hasNext()) {
                 switch (reader.nextName()) {
                     case "assetIndex" -> assetIndex = moshi.adapter(AssetIndex.class).fromJson(reader);
-                    case "assets" -> assets = reader.nextString();
+                    case "assets" -> assets = moshi.adapter(Version.Assets.class).fromJson(reader);
                     case "complianceLevel" -> complianceLevel = reader.nextInt();
                     case "downloads" -> downloads = moshi.adapter(Downloads.class).fromJson(reader);
                     case "id" -> id = reader.nextString();
@@ -64,7 +66,7 @@ public record Version(
                     }
                     case "mainClass" -> mainClass = reader.nextString();
                     case "minecraftArguments" -> minecraftArguments = reader.nextString();
-                    case "minimumLauncherVersion" -> minimumLauncherVersion = reader.nextString();
+                    case "minimumLauncherVersion" -> minimumLauncherVersion = reader.nextInt();
                     case "releaseTime" -> releaseTime = reader.nextString();
                     case "time" -> time = reader.nextString();
                     case "type" -> type = reader.nextString();
@@ -90,7 +92,43 @@ public record Version(
 
         @Override
         public void toJson(final JsonWriter writer, final Version value) throws IOException {
+            if (value == null) throw new NullPointerException("Cannot serialize null object!");
+            writer.beginObject();
 
+            writer.name("assetIndex");
+            moshi.adapter(Version.AssetIndex.class).toJson(writer, value.assetIndex());
+
+            writer.name("assets");
+            moshi.adapter(Version.Assets.class).toJson(writer, value.assets());
+
+            writer.name("downloads");
+            moshi.adapter(Version.Downloads.class).toJson(writer, value.downloads());
+
+            writer.name("id")
+                    .value(value.id());
+
+            writer.name("libraries");
+            moshi.adapter(Version.Library[].class).toJson(writer, value.libraries());
+
+            writer.name("mainClass")
+                    .value(value.mainClass());
+
+            writer.name("minecraftArguments")
+                    .value(value.minecraftArguments());
+
+            writer.name("minimumLauncherVersion")
+                    .value(value.minimumLauncherVersion());
+
+            writer.name("releaseTime")
+                    .value(value.releaseTime());
+
+            writer.name("time")
+                    .value(value.time());
+
+            writer.name("type")
+                    .value(value.type());
+
+            writer.endObject();
         }
     }
 
@@ -119,8 +157,53 @@ public record Version(
 
             @Override
             public void toJson(final JsonWriter writer, final AssetIndex value) throws IOException {
+                if (value == null) throw new NullPointerException("Cannot serialize null object!");
+                writer.beginObject();
 
+                writer.name("id")
+                        .value(value.id());
+                writer.name("sha1")
+                        .value(value.sha1());
+                writer.name("size")
+                        .value(value.size());
+                writer.name("totalSize")
+                        .value(value.totalSize());
+                writer.name("url")
+                        .value(value.url());
+
+                writer.endObject();
             }
+
+        }
+
+    }
+
+    @RequiredArgsConstructor
+    public enum Assets {
+
+        PRE_1_6("pre-1.6"),//1.5.2 and lower
+
+        LEGACY("legacy");//1.6 and higher
+
+        public final String assets;
+
+        public static final class Adapter extends JsonAdapter<Version.Assets> {//For the lulz
+
+            @Override
+            public Assets fromJson(final JsonReader reader) throws IOException {
+                String assetsString = reader.nextString();
+                for(Version.Assets assets : Version.Assets.values()) {
+                    if (assets.assets.equals(assetsString)) return assets;
+                }
+                return null;
+            }
+
+            @Override
+            public void toJson(final JsonWriter writer, final Assets value) throws IOException {
+                if (value == null) throw new NullPointerException("Cannot serialize null object!");
+                writer.value(value.assets);
+            }
+
         }
 
     }
@@ -149,6 +232,20 @@ public record Version(
 
             @Override
             public void toJson(final JsonWriter writer, final Downloads value) throws IOException {
+                if (value == null) throw new NullPointerException("Cannot serialize null object!");
+
+                writer.beginObject();
+
+                writer.name("client");
+                moshi.adapter(Downloads.Download.class).toJson(writer, value.client());
+
+                writer.name("server");
+                moshi.adapter(Downloads.Download.class).toJson(writer, value.server());
+
+                writer.name("windows_server");
+                moshi.adapter(Downloads.Download.class).toJson(writer, value.windows_server());
+
+                writer.endObject();
             }
 
         }
@@ -176,6 +273,14 @@ public record Version(
 
                 @Override
                 public void toJson(final JsonWriter writer, final Download value) throws IOException {
+                    if (value == null) throw new NullPointerException("Cannot serialize null object!");
+                    writer.beginObject();
+
+                    writer.name("sha1").value(value.sha1());
+                    writer.name("size").value(value.size());
+                    writer.name("url").value(value.url());
+
+                    writer.endObject();
                 }
 
             }
@@ -206,6 +311,14 @@ public record Version(
 
             @Override
             public void toJson(final JsonWriter writer, final JavaVersion value) throws IOException {
+                if (value == null) throw new NullPointerException("Cannot serialize null object!");
+
+                writer.beginObject();
+
+                writer.name("component").value(value.component());
+                writer.name("majorVersion").value(value.majorVersion());
+
+                writer.endObject();
             }
 
         }
@@ -233,17 +346,7 @@ public record Version(
                         case "downloads" -> downloads = moshi.adapter(Library.Downloads.class).fromJson(reader);
                         case "extract" -> extract = moshi.adapter(Library.Extract.class).fromJson(reader);
                         case "name" -> name = reader.nextString();
-                        case "rules" -> {
-                            List<Version.Library.Rule> i = new ArrayList<>();
-                            reader.beginArray();
-                            while(reader.hasNext()) {
-                                i.add(
-                                        moshi.adapter(Library.Rule.class).fromJson(reader)
-                                );
-                            }
-                            reader.endArray();
-                            rules = i.toArray(new Rule[0]);
-                        }
+                        case "rules" -> rules = moshi.adapter(Library.Rule[].class).fromJson(reader);
                         case "natives" -> natives = moshi.adapter(Library.Natives.class).fromJson(reader);
                     }
                 }
@@ -253,11 +356,47 @@ public record Version(
 
             @Override
             public void toJson(final JsonWriter writer, final Library value) throws IOException {
+                if (value == null) throw new NullPointerException("Cannot serialize null object!");
+
+                writer.beginObject();
+
+                if (value.downloads() != null) {
+                    writer.name("downloads");
+                    moshi.adapter(Library.Downloads.class)
+                            .toJson(writer, value.downloads());
+                }
+
+                if (value.extract() != null) {
+                    writer.name("extract");
+                    moshi.adapter(Library.Extract.class)
+                            .toJson(writer, value.extract());
+                }
+
+                writer.name("name")
+                        .value(value.name());
+
+                if (value.natives() != null) {
+                    writer.name("natives");
+                    moshi.adapter(Library.Natives.class)
+                            .toJson(writer, value.natives());
+                }
+
+                if (value.rules() != null) {
+                    writer.name("rules");
+                    writer.beginArray();
+                    for(int i = 0; i < value.rules().length; ++i) {
+                        moshi.adapter(Library.Rule.class)
+                                .toJson(writer, value.rules()[i]);
+                    }
+                    writer.endArray();
+                }
+
+                writer.endObject();
             }
 
         }
 
-        public record Downloads(Library.Downloads.Artifact artifact, Classifiers classifiers) {
+        public record Downloads(Library.Downloads.Artifact artifact, Version.Library.Downloads.Classifiers classifiers) {
 
             @RequiredArgsConstructor
             public static final class Adapter extends JsonAdapter<Library.Downloads> {
@@ -282,6 +421,20 @@ public record Version(
 
                 @Override
                 public void toJson(final JsonWriter writer, final Downloads value) throws IOException {
+                    if (value == null) throw new NullPointerException("Cannot serialize null object!");
+
+                    writer.beginObject();
+
+                    if (value.artifact() != null) {
+                        writer.name("artifact");
+                        moshi.adapter(Library.Downloads.Artifact.class).toJson(writer, value.artifact());
+                    }
+                    if (value.classifiers() != null) {
+                        writer.name("classifiers");
+                        moshi.adapter(Library.Downloads.Classifiers.class).toJson(writer, value.classifiers());
+                    }
+
+                    writer.endObject();
                 }
 
             }
@@ -309,6 +462,16 @@ public record Version(
 
                     @Override
                     public void toJson(final JsonWriter writer, final Artifact value) throws IOException {
+                        if (value == null) throw new NullPointerException("Cannot serialize null object!");
+
+                        writer.beginObject();
+
+                        writer.name("path").value(value.path());
+                        writer.name("sha1").value(value.sha1());
+                        writer.name("size").value(value.size());
+                        writer.name("url").value(value.url());
+
+                        writer.endObject();
                     }
 
                 }
@@ -340,6 +503,26 @@ public record Version(
 
                     @Override
                     public void toJson(final JsonWriter writer, final Classifiers value) throws IOException {
+                        if (value == null) throw new NullPointerException("Cannot serialize null object!");
+
+                        writer.beginObject();
+
+                        if (value.natives_linux() != null) {
+                            writer.name("natives-linux");
+                            moshi.adapter(Library.Downloads.Artifact.class).toJson(writer, value.natives_linux());
+                        }
+
+                        if (value.natives_osx() != null) {
+                            writer.name("natives-osx");
+                            moshi.adapter(Library.Downloads.Artifact.class).toJson(writer, value.natives_osx());
+                        }
+
+                        if (value.natives_windows() != null) {
+                            writer.name("natives-windows");
+                            moshi.adapter(Library.Downloads.Artifact.class).toJson(writer, value.natives_windows());
+                        }
+
+                        writer.endObject();
                     }
 
                 }
@@ -373,6 +556,16 @@ public record Version(
 
                 @Override
                 public void toJson(final JsonWriter writer, final Extract value) throws IOException {
+                    if (value == null) throw new NullPointerException("Cannot serialize null object!");
+
+                    writer.beginObject();
+
+                    writer.name("exclude");
+                    writer.beginArray();
+                    for(String i : value.exclude()) writer.value(i);
+                    writer.endArray();
+
+                    writer.endObject();
                 }
 
             }
@@ -400,13 +593,22 @@ public record Version(
 
                 @Override
                 public void toJson(final JsonWriter writer, final Natives value) throws IOException {
+                    if (value == null) throw new NullPointerException("Cannot serialize null object!");
+
+                    writer.beginObject();
+
+                    writer.name("linux").value(value.linux());
+                    writer.name("osx").value(value.osx());
+                    writer.name("windows").value(value.windows());
+
+                    writer.endObject();
                 }
 
             }
 
         }
 
-        public record Rule(String action, OS os) {
+        public record Rule(Version.Library.Rule.Action action, OS os) {
 
             @RequiredArgsConstructor
             public static final class Adapter extends JsonAdapter<Version.Library.Rule> {
@@ -415,13 +617,13 @@ public record Version(
 
                 @Override
                 public Rule fromJson(final JsonReader reader) throws IOException {
-                    String action = null;
+                    Version.Library.Rule.Action action = null;
                     OS os = null;
 
                     reader.beginObject();
                     while(reader.hasNext()) {
                         switch(reader.nextName()) {
-                            case "action" -> action = reader.nextString();
+                            case "action" -> action = moshi.adapter(Version.Library.Rule.Action.class).fromJson(reader);
                             case "os" -> os = moshi.adapter(Version.Library.Rule.OS.class).fromJson(reader);
                         }
                     }
@@ -431,6 +633,49 @@ public record Version(
 
                 @Override
                 public void toJson(final JsonWriter writer, final Rule value) throws IOException {
+                    if (value == null) throw new NullPointerException("Cannot serialize null object!");
+
+                    writer.beginObject();
+
+                    writer.name("action");
+                    moshi.adapter(Version.Library.Rule.Action.class).toJson(writer, value.action());
+
+                    if (value.os() != null) {//May be missing
+                        writer.name("os");
+                        moshi.adapter(Version.Library.Rule.OS.class).toJson(writer, value.os());
+                    }
+
+                    writer.endObject();
+                }
+
+            }
+
+            @RequiredArgsConstructor
+            public enum Action {
+
+                ALLOW("allow"),
+
+                DISALLOW("disallow");
+
+                public final String action;
+
+                public static final class Adapter extends JsonAdapter<Version.Library.Rule.Action> {
+
+                    @Override
+                    public Version.Library.Rule.Action fromJson(final JsonReader reader) throws IOException {
+                        String action = reader.nextString();
+                        for(Version.Library.Rule.Action i : Version.Library.Rule.Action.values()) {
+                            if (i.action.equals(action)) return i;
+                        }
+                        return null;
+                    }
+
+                    @Override
+                    public void toJson(final JsonWriter writer, final Version.Library.Rule.Action value) throws IOException {
+                        if (value == null) throw new NullPointerException("Cannot serialize null object!");
+                        writer.value(value.action);
+                    }
+
                 }
 
             }
@@ -456,6 +701,12 @@ public record Version(
 
                     @Override
                     public void toJson(final JsonWriter writer, final OS value) throws IOException {
+                        if (value == null) throw new NullPointerException("Cannot serialize null object!");
+
+                        writer.beginObject();
+                        writer.name("name").value(value.name());
+                        writer.name("version").value(value.version());
+                        writer.endObject();
                     }
 
                 }

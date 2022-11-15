@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public record Assets(boolean map_to_resources, Map<String, Asset> objects, boolean virtual) {
 
@@ -48,6 +49,26 @@ public record Assets(boolean map_to_resources, Map<String, Asset> objects, boole
 
         @Override
         public void toJson(final JsonWriter writer, final Assets value) throws IOException {
+            if (value == null) throw new NullPointerException("Cannot serialize a null object!");
+            writer.beginObject();
+            //Mojang's JSON has map_to_resources or virtual. Either may be missing - IDK why.
+            if (value.map_to_resources()) {
+                writer.name("map_to_resources").value(true);
+            }
+
+            writer.name("objects")
+                    .beginObject();
+            for(Entry<String, Asset> entry : value.objects().entrySet()) {
+                writer.name(entry.getKey());
+                moshi.adapter(Assets.Asset.class)
+                        .toJson(writer, entry.getValue());
+            }
+            writer.endObject();
+
+            if (value.virtual()) {
+                writer.name("virtual").value(true);
+            }
+            writer.endObject();
         }
 
     }
@@ -74,6 +95,11 @@ public record Assets(boolean map_to_resources, Map<String, Asset> objects, boole
 
             @Override
             public void toJson(final JsonWriter writer, final Asset value) throws IOException {
+                if (value == null) throw new NullPointerException("Cannot serialize a null object!");
+                writer.beginObject()
+                        .name("hash").value(value.hash())
+                        .name("size").value(value.size())
+                        .endObject();
             }
 
         }

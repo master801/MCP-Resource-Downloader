@@ -1,5 +1,3 @@
 rootProject.name = 'MCP-Resource-Downloader'
 
-include(
-        ':GUI'
-)
+include(':Lib', ':CMD', ':GUI')

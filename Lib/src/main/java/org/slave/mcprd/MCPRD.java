@@ -15,6 +15,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.channels.Channels;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.regex.Pattern;
 
 public final class MCPRD {
 
@@ -40,13 +42,27 @@ public final class MCPRD {
                 .build();
     }
 
-    public void download(final String mcpDir, final String mcVersion, final boolean ignoreMCP, final boolean dlJars, final boolean clientOnly, final boolean serverOnly, final boolean dlLibraries, final boolean dlNatives, final boolean dlResources, final boolean overwrite) throws RuntimeException, IOException {
+    public void download(final String mcpDir, final String mcVersion, final boolean ignoreMCP, final boolean dlJars, final boolean clientOnly, final boolean serverOnly, final boolean dlLibraries, final boolean dlNatives, final boolean linux, final boolean windows, final boolean osx, final boolean dlResources, final boolean overwrite) throws RuntimeException, IOException {
         VersionManifest versionManifest;
         try {
+            System.out.println("Getting \"version_manifest_v2.json\"...");
             versionManifest = getVersionManifest();
         } catch(IOException e) {
             throw new RuntimeException("Failed to get \"version_manifest_v2.json\"!", e);
         }
+        System.out.println("Done getting version manifest.\n");
+
+        if (mcpDir == null && mcVersion == null) {//Just print out all versions
+            System.out.println("Printing out all Minecraft versions...\n");
+            for(VersionManifest.Version version : versionManifest.versions()) {
+                System.out.println(version.id());
+            }
+            System.out.println("\nDone");
+            return;
+        }
+
+        if (mcpDir == null) throw new FileNotFoundException("No MCP directory was set!");
+        if (mcVersion == null) throw new NullPointerException("No Minecraft version was set!");
 
         VersionManifest.Version manifestVersion = null;
         for(VersionManifest.Version i : versionManifest.versions()) {
@@ -58,68 +74,170 @@ public final class MCPRD {
 
         if (manifestVersion != null) {
             if (version == null) {
+                System.out.println("Getting version JSON...");
                 try {
                     version = getVersion(manifestVersion);
                 } catch(IOException e) {
                     throw new RuntimeException("Failed to get version!", e);
                 }
+                System.out.println("Done getting version JSON.\n");
             }
             if (version != null) {
                 File dirMCP = new File(mcpDir);
-                if (!dirMCP.exists()) throw new FileNotFoundException(String.format("MCP Directory \"%s\" does not exist!", mcpDir));
+                if (!dirMCP.exists()) throw new FileNotFoundException(String.format("MCP directory \"%s\" does not exist!", mcpDir));
                 if (!dirMCP.isDirectory()) throw new FileNotFoundException(String.format("Selected path \"%s\" is not a directory!", mcpDir));
                 if (!ignoreMCP && !new File(dirMCP, "docs/README-MCP.TXT").isFile()) throw new FileNotFoundException(String.format("Selected path \"%s\" is not not a valid MCP directory!", mcpDir));
 
                 File dirJars = new File(dirMCP, "jars");
-                File dirJarsBin = new File(dirJars, "bin");
-                File dirJarsResources = new File(dirJars, "resources");
-                File dirNatives = new File(dirJarsBin, "natives");
+                File dirJarsBin = new File(dirJars, "bin");//pre-1.6
+                File dirLibraries = new File(dirJars, "libraries");//legacy
+                File dirJarsResources = new File(dirJars, "resources");//pre-1.6
+                File dirNatives;
+                File dirJarsVersions = new File(dirJars, "versions");//legacy
+                File dirJarsVersionsID = new File(dirJarsVersions, version.id());//legacy
 
                 if (!dirJars.exists()) {
                     if (!dirJars.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirJars.getPath()));
                 }
-                if (!dirJarsBin.exists()) {
-                    if (!dirJarsBin.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirJarsBin.getPath()));
-                }
-                if (!dirNatives.exists()) {
-                    if (!dirNatives.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirNatives.getPath()));
+
+                switch(version.assets()) {
+                    case PRE_1_6 -> dirNatives = new File(dirJarsBin, "natives");
+                    case LEGACY -> dirNatives = new File(dirJarsVersionsID, String.format("%s-natives", version.id()));
+                    default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!", version.assets().assets));
                 }
 
                 if (dlJars) {
                     System.out.println("Downloading jar files...");
-                    downloadMinecraftJars(dirJars, dirJarsBin, version, clientOnly, serverOnly, overwrite);
+                    switch(version.assets()) {
+                        case PRE_1_6 -> {
+                            if (!dirJarsBin.exists()) {
+                                if (!dirJarsBin.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirJarsBin.getPath()));
+                            }
+                        }
+                        case LEGACY -> {
+                            if (!dirJarsVersions.exists()) {
+                                if (!dirJarsVersions.mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", dirJarsVersions.getPath()));
+                            }
+                            if (!dirJarsVersionsID.exists()) {
+                                if (!dirJarsVersionsID.mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", dirJarsVersionsID.getPath()));
+                            }
+                        }
+                        default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!", version.assets().assets));
+                    }
+                    downloadMinecraftJars(dirJars, dirJarsBin, dirJarsVersionsID, version, clientOnly, serverOnly, overwrite);
                     System.out.println("Done downloading jar files!\n");
                 }
                 if (dlLibraries) {
                     System.out.println("Downloading library files...");
-                    downloadLibraries(dirJarsBin, version.libraries(), overwrite);
+                    File dir;
+                    switch(version.assets()) {
+                        case PRE_1_6 -> {
+                            if (!dirJarsBin.exists()) {
+                                if (!dirJarsBin.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirJarsBin.getPath()));
+                            }
+                            dir = dirJarsBin;
+                        }
+                        case LEGACY -> {
+                            if (!dirLibraries.exists()) {
+                                if (!dirLibraries.mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", dirLibraries.getPath()));
+                            }
+                            dir = dirLibraries;
+                        }
+                        default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!", version.assets().assets));
+                    }
+                    downloadLibraries(dir, version, overwrite);
                     System.out.println("Done downloading library files!\n");
                 }
                 if (dlNatives) {
                     System.out.println("Downloading native files...");
-                    downloadAndExtractNatives(dirNatives, version, overwrite);
+                    if (!dirNatives.exists()) {
+                        if (!dirNatives.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirNatives.getPath()));
+                    }
+                    downloadAndExtractNatives(dirNatives, version, linux, windows, osx, overwrite);
                     System.out.println("Done downloading native files!\n");
                 }
                 if (dlResources) {
-                    if (!dirJarsResources.exists()) {
-                        if (!dirJarsResources.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirJarsResources.getPath()));
+                    System.out.println("Downloading asset files...");
+
+                    Assets assets;
+                    try {
+                        assets = getAssets(version);
+                    } catch(IOException e) {
+                        throw new RuntimeException("Failed to get assets index!", e);
                     }
 
-                    System.out.println("Downloading resource files...");
-                    downloadResources(dirJarsResources, version, overwrite);
-                    System.out.println("Done downloading resource files!\n");
-                }
+                    File dir;
+                    if (assets.virtual()) {//legacy (1.6+)
+                        File dirAssets = new File(dirJars, "assets");
+                        File dirAssetsIndexes = new File(dirAssets, "indexes");
+                        File dirAssetsObjects = new File(dirAssets, "objects");
 
-                //TODO Support 1.6
+                        if (!dirAssets.exists()) {
+                            if (!dirAssets.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirAssets.getPath()));
+                        }
+                        if (!dirAssetsIndexes.exists()) {
+                            if (!dirAssetsIndexes.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirAssetsIndexes.getPath()));
+                        }
+                        if (!dirAssetsObjects.exists()) {
+                            if (!dirAssetsObjects.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirAssetsObjects.getPath()));
+                        }
+
+                        //Serialize instead of downloading to avoid additional network calls
+                        boolean write = true;
+                        File fileAssetsJSON = new File(dirAssetsIndexes, String.format("%s.json", version.assets()));
+                        if (fileAssetsJSON.exists()) {
+                            if (!overwrite) {
+                                System.out.println(String.format("File \"%s\" exists, but can't overwrite!", fileAssetsJSON.getPath()));
+                                write = false;
+                            } else {
+                                System.out.println(String.format("File \"%s\" exists, but overwriting...", fileAssetsJSON.getPath()));
+                            }
+                        }
+                        if (write) {
+                            try {
+                                FileOutputStream fileOutputStream = new FileOutputStream(fileAssetsJSON);
+                                OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
+                                outputStreamWriter.write(
+                                        moshi.adapter(Assets.class)
+                                                .toJson(assets)
+                                );
+                                outputStreamWriter.flush();
+                                outputStreamWriter.close();
+                                fileOutputStream.flush();
+                                fileOutputStream.close();
+                            } catch(IOException e) {
+                                throw new RuntimeException(String.format("Failed to write assets JSON file \"%s\"!", fileAssetsJSON.getPath()), e);
+                            }
+                        }
+
+                        dir = dirAssetsObjects;
+                    } else if (assets.map_to_resources()) {//pre-1.6
+                        dir = dirJarsResources;
+                    } else {
+                        throw new RuntimeException("Failed to correctly set asset directory! This is unexpected!");
+                    }
+
+                    if (!dir.exists()) {
+                        if (!dir.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dir.getPath()));
+                    }
+
+                    downloadResources(dir, assets, overwrite);
+                    System.out.println("Done downloading asset files!\n");
+                }
             }
         }
     }
 
     /**
-     * Download client.jar and server.jar
+     * @param dirJars jars (for server)
+     * @param dirJarsBin jars/bin (for pre-1.6 client)
+     * @param dirJarsVersionsID client - jars/bin (for pre-1.6), versions/{id} (for legacy - 1.6)
      * @param version
+     * @param client Should download client jar
+     * @param server Should download server jar
+     * @param overwrite Should overwrite any existing file
      */
-    public void downloadMinecraftJars(final File dirJars, final File dirJarsBin, @NotNull final Version version, final boolean client, final boolean server, final boolean overwrite) {
+    public void downloadMinecraftJars(@NotNull final File dirJars, final File dirJarsBin, @NotNull final File dirJarsVersionsID, @NotNull final Version version, final boolean client, final boolean server, final boolean overwrite) {
         URL url;
         File dest;
 
@@ -130,9 +248,49 @@ public final class MCPRD {
             } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
             }
-            dest = new File(dirJarsBin, "minecraft.jar");
+
+            if (version.assets() == Version.Assets.PRE_1_6) {//dir expects to be "jars/bin"
+                dest = new File(dirJarsBin, "minecraft.jar");
+            } else if (version.assets() == Version.Assets.LEGACY) {//dir expects to be "jars"
+                dest = new File(dirJarsVersionsID, String.format("%s.jar", version.id()));
+
+                //Serialize instead of downloading to avoid additional network calls
+                boolean write = true;
+                File fileVersionJSON = new File(dirJarsVersionsID, String.format("%s.json", version.id()));
+                if (fileVersionJSON.exists()) {
+                    if (!overwrite) {
+                        System.out.println(String.format("File \"%s\" exists, but can't overwrite!", fileVersionJSON.getPath()));
+                        write = false;
+                    } else {
+                        System.out.println(String.format("File \"%s\" exists, but overwriting...", fileVersionJSON.getPath()));
+                    }
+                }
+                if (write) {
+                    try {
+                        FileOutputStream fileOutputStream = new FileOutputStream(fileVersionJSON);
+                        OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream);
+                        outputStreamWriter.write(
+                                moshi.adapter(Version.class)
+                                        .toJson(version)
+                        );
+                        outputStreamWriter.flush();
+                        outputStreamWriter.close();
+                        fileOutputStream.flush();
+                        fileOutputStream.close();
+                    } catch(IOException e) {
+                        throw new RuntimeException(String.format("Failed to write assets JSON file \"%s\"!", fileVersionJSON.getPath()), e);
+                    }
+                }
+            } else {
+                throw new RuntimeException("Failed to download client jar due to unexpected asset ID!");
+            }
+
             System.out.println("Downloading client jar...");
-            downloadFile(url, dest, overwrite);
+            try {
+                downloadFile(url, dest, overwrite);
+            } catch(IOException e) {
+                throw new RuntimeException("Failed to download client jar!", e);
+            }
             System.out.println("Done downloading client jar");
             status += 1;
         }
@@ -144,41 +302,44 @@ public final class MCPRD {
             }
             dest = new File(dirJars, "minecraft_server.jar");
             System.out.println("Downloading server jar...");
-            downloadFile(url, dest, overwrite);
+            try {
+                downloadFile(url, dest, overwrite);
+            } catch(IOException e) {
+                throw new RuntimeException("Failed to download server jar!", e);
+            }
             System.out.println("Done downloading server jar");
             status += 1;
         }
         if (status == 0) System.out.println("Didn't download any jar files?!");
     }
 
-    public void downloadAndExtractNatives(@NotNull File dirNatives, @NotNull final Version version, final boolean overwrite) {
-        List<Version.Library> natives = downloadNatives(dirNatives, version.libraries(), overwrite);
-        extractNatives(dirNatives, natives, overwrite);
+    public void downloadAndExtractNatives(@NotNull File dirNatives, @NotNull final Version version, final boolean linux, final boolean windows, final boolean osx, final boolean overwrite) {
+        List<Version.Library> natives = downloadNatives(dirNatives, version, linux, windows, osx, overwrite);
+        extractNatives(dirNatives, natives, linux, windows, osx, overwrite);
     }
 
-    private List<Version.Library> downloadNatives(@NotNull File dirNatives, @NotNull final Version.Library[] libraries, final boolean overwrite) {
+    private List<Version.Library> downloadNatives(@NotNull File dirNatives, @NotNull final Version version, final boolean linux, final boolean windows, final boolean osx, final boolean overwrite) {
         List<Version.Library> natives = new ArrayList<>();
-        for(Version.Library library : libraries) {
-            String[] maven = library.name().split(":", 3);//group, artifact, version
-            if (maven[2].contains("nightly")) continue;//Don't know why they have 2 different versions...
-            switch(maven[0]) {
-                case "org.lwjgl.lwjgl" -> {
-                    switch(maven[1]) {
-                        case "lwjgl-platform" -> natives.add(library);
-                    }
-                }
-                case "net.java.jinput" -> {
-                    switch(maven[1]) {
-                        case "jinput-platform" -> natives.add(library);//WTF duplicate entry in 1.2.5?!!
-                    }
-                }
+
+        for(Version.Library library : version.libraries()) {
+            if (library.natives() == null) continue;
+            if (!checkLibraryRules(library)) {
+                System.out.println(String.format("Disallowed native \"%s\" for this OS", library.name()));
+            } else {
+                natives.add(library);
             }
         }
 
         for(Version.Library library : natives) {
-            downloadNative(dirNatives, library.downloads().classifiers().natives_linux(), overwrite);
-            downloadNative(dirNatives, library.downloads().classifiers().natives_osx(), overwrite);
-            downloadNative(dirNatives, library.downloads().classifiers().natives_windows(), overwrite);
+            if (linux && library.downloads().classifiers().natives_linux() != null) {
+                downloadNative(dirNatives, library.downloads().classifiers().natives_linux(), overwrite);
+            }
+            if (windows && library.downloads().classifiers().natives_windows() != null) {
+                downloadNative(dirNatives, library.downloads().classifiers().natives_windows(), overwrite);
+            }
+            if (osx && library.downloads().classifiers().natives_osx() != null) {
+                downloadNative(dirNatives, library.downloads().classifiers().natives_osx(), overwrite);
+            }
         }
         return natives;
     }
@@ -190,18 +351,26 @@ public final class MCPRD {
         } catch (MalformedURLException e) {
             throw new RuntimeException(e);
         }
-        downloadFile(
-                url,
-                new File(dirNatives, artifact.path().substring(artifact.path().lastIndexOf('/'))),
-                overwrite
-        );
+
+        File fileNative = new File(dirNatives, artifact.path().substring(artifact.path().lastIndexOf('/')));
+        try {
+            downloadFile(url, fileNative, overwrite);
+        } catch(IOException e) {
+            throw new RuntimeException(String.format("Failed to download native \"%s\"!", fileNative), e);
+        }
     }
 
-    private void extractNatives(@NotNull final File dirNatives, @NotNull final List<Version.Library> nativeFiles, final boolean overwrite) {
+    private void extractNatives(@NotNull final File dirNatives, @NotNull final List<Version.Library> nativeFiles, final boolean linux, final boolean windows, final boolean osx, final boolean overwrite) {
         for(Version.Library _native : nativeFiles) {
-            extractNative(dirNatives, _native, _native.downloads().classifiers().natives_windows(), overwrite);
-            extractNative(dirNatives, _native, _native.downloads().classifiers().natives_linux(), overwrite);
-            extractNative(dirNatives, _native, _native.downloads().classifiers().natives_osx(), overwrite);
+            if (linux && _native.downloads().classifiers().natives_linux() != null) {
+                extractNative(dirNatives, _native, _native.downloads().classifiers().natives_linux(), overwrite);
+            }
+            if (windows && _native.downloads().classifiers().natives_windows() != null) {
+                extractNative(dirNatives, _native, _native.downloads().classifiers().natives_windows(), overwrite);
+            }
+            if (osx && _native.downloads().classifiers().natives_osx() != null) {
+                extractNative(dirNatives, _native, _native.downloads().classifiers().natives_osx(), overwrite);
+            }
         }
     }
 
@@ -274,68 +443,75 @@ public final class MCPRD {
         System.out.println("Done extracting native jar\n");
     }
 
-    /**
-     * Download libraries
-     *
-     * @param libraries
-     */
-    @SuppressWarnings("SwitchStatementWithTooFewBranches")
-    public void downloadLibraries(@NotNull File dirBin, @NotNull final Version.Library[] libraries, final boolean overwrite) {//jinput, lwjgl, lwjgl_util
+    public void downloadLibraries(@NotNull File dir, @NotNull final Version version, final boolean overwrite) {
         List<Version.Library> toDownload = new ArrayList<>();
-        for(Version.Library library : libraries) {
-            String[] maven = library.name().split(":", 3);//group, artifact, version
-            if (maven[2].contains("nightly")) continue;//Don't know why they have 2 different versions...
-            switch(maven[0]) {
-                case "org.lwjgl.lwjgl" -> {
-                    switch(maven[1]) {
-                        case "lwjgl", "lwjgl_util" -> toDownload.add(library);
-                    }
-                }
-                case "net.java.jinput" -> {
-                    switch(maven[1]) {
-                        case "jinput" -> toDownload.add(library);
-                    }
-                }
+        for(Version.Library library : version.libraries()) {
+            if (library.natives() != null) continue;
+            if (checkLibraryRules(library)) {
+                toDownload.add(library);
+            } else {
+                System.out.println(String.format("Disallowed library \"%s\" for this OS", library.name()));
             }
         }
 
         for(Version.Library library : toDownload) {
-            String[] maven = library.name().split(":", 3);
+            System.out.println(String.format("Downloading library \"%s\"...", library.name()));
+
+            File fileLibrary;
+            switch(version.assets()) {
+                case PRE_1_6 -> {//dir should be jars/bin
+                    fileLibrary = new File(dir, String.format("%s.jar", library.name().split(":", 3)[1]));
+                }
+                case LEGACY -> {//dir should be jars/libraries
+                    if (library.downloads().artifact() != null) {
+                        fileLibrary = new File(dir, library.downloads().artifact().path());
+                        if (!fileLibrary.getParentFile().exists()) {
+                            if (!fileLibrary.getParentFile().mkdirs()) throw new RuntimeException(String.format("Failed to create file directory \"%s\"!", fileLibrary.getParentFile().getPath()));
+                        }
+                    } else {
+                        continue;
+                    }
+                }
+                default -> throw new RuntimeException(String.format("Unexpected asset! \"%s\"", version.assets()));
+            }
+
             try {
-                System.out.println(String.format("Downloading library \"%s\"...", library.name()));
                 downloadFile(
                         new URL(library.downloads().artifact().url()),
-                        new File(dirBin, String.format("%s.jar", maven[1])),
+                        fileLibrary,
                         overwrite
                 );
-                System.out.println(String.format("Done downloading library \"%s\"!", library.name()));
-            } catch (MalformedURLException e) {
-                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(String.format("Failed to download library \"%s\"!", library.name()), e);
             }
+
+            System.out.println(String.format("Done downloading library \"%s\"!", library.name()));
         }
     }
 
-    public void downloadResources(@NotNull final File dirJarsResources, @NotNull final Version version, final boolean overwrite) {
-        Assets assets;
-        try {
-            assets = getAssets(version);
-        } catch(IOException e) {
-            throw new RuntimeException("Failed to get assets index!", e);
-        }
-        if (assets == null) {
-            System.out.println("Failed to get asset index!");
-            return;
-        }
-
-        System.out.println("Downloading asset files...");
-        for(Entry<String, Asset> entry : assets.objects().entrySet()) {
-            File fileResource = new File(dirJarsResources, entry.getKey());
-            if (!fileResource.getParentFile().exists()) {
-                if (!fileResource.getParentFile().mkdirs()) throw new RuntimeException(String.format("Failed to create file directory \"%s\"!", fileResource.getParentFile().getPath()));
+    public void downloadResources(@NotNull final File dir, @NotNull final Assets assets, final boolean overwrite) {
+        if (assets.map_to_resources()) {//pre-1.6
+            for(Entry<String, Asset> entry : assets.objects().entrySet()) {
+                File fileResource = new File(dir, entry.getKey());//dir is expected to be set to "jars/resources"
+                if (!fileResource.getParentFile().exists()) {
+                    if (!fileResource.getParentFile().mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", fileResource.getParentFile().getPath()));
+                }
+                downloadResource(fileResource, entry.getValue(), overwrite);
             }
-            downloadResource(fileResource, entry.getValue(), overwrite);
+        } else if (assets.virtual()) {//legacy (1.6)
+            //We expect parameter dir to be set to "jars/assets/objects"
+            for(Entry<String, Asset> entry : assets.objects().entrySet()) {
+                String dirAssetObjectName = entry.getValue().hash().substring(0, 2);//TODO This does not seem right...
+                File dirAssetObject = new File(dir, dirAssetObjectName);//dir is expected to be set to "jars/assets"
+                File fileAssetObject = new File(dirAssetObject, entry.getValue().hash());
+                if (!dirAssetObject.exists()) {
+                    if (!dirAssetObject.mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", dirAssetObject.getPath()));
+                }
+                downloadResource(fileAssetObject, entry.getValue(), overwrite);
+            }
+        } else {
+            throw new RuntimeException("Something unexpected happened!");
         }
-        System.out.println("Done downloading asset files!");
     }
 
     private Assets getAssets(@NotNull final Version version) throws IOException {
@@ -351,12 +527,17 @@ public final class MCPRD {
             return moshi.adapter(Assets.class)
                     .fromJson(fetchedJSON);
         }
-        return null;
+        throw new NullPointerException("Failed to parse JSON!");
     }
 
-    private void downloadResource(@NotNull final File fileResource, @NotNull final Assets.Asset asset, final boolean overwrite) {
-        if (fileResource.exists() && !overwrite) {
-            return;
+    private void downloadResource(@NotNull final File fileAsset, @NotNull final Assets.Asset asset, final boolean overwrite) {
+        if (fileAsset.exists()) {
+            if (!overwrite) {
+                System.out.println(String.format("Asset \"%s\" already exists and can't overwrite", fileAsset.getPath()));
+                return;
+            } else {
+                System.out.println(String.format("Asset \"%s\" already exists, but overwriting...", fileAsset.getPath()));
+            }
         }
 
         URL urlFile;
@@ -365,9 +546,13 @@ public final class MCPRD {
         } catch (MalformedURLException e) {
             throw new RuntimeException(e);
         }
-        System.out.println(String.format("Downloading resource file \"%s\"...", fileResource.getPath()));
-        downloadFile(urlFile, fileResource, overwrite);
-        System.out.println("Done");
+        System.out.println(String.format("Downloading asset file \"%s\"...", fileAsset.getPath()));
+        try {
+            downloadFile(urlFile, fileAsset, overwrite);
+        } catch(IOException e) {
+            throw new RuntimeException(String.format("Failed to download asset file \"%s\"!", fileAsset.getName()), e);
+        }
+        System.out.println("Done downloading asset file!\n");
     }
 
     /**
@@ -401,6 +586,32 @@ public final class MCPRD {
         return null;
     }
 
+    private boolean checkLibraryRules(final @NotNull Version.Library library) {
+        boolean allow = true;//WTF - jinput has no rule
+        if (library.rules() != null) {
+            for(Version.Library.Rule rule : library.rules()) {
+                if (rule.os() == null) {
+                    switch(rule.action()) {
+                        case ALLOW -> allow = true;
+                        case DISALLOW -> allow = false;
+                    }
+                } else {//TODO nightly version is used for OSX exclusively
+                    boolean matchesOS = rule.os().name().startsWith(System.getProperty("os.name").toLowerCase());
+                    boolean matchesOSVersion = false;
+                    if (rule.os().version() != null) matchesOSVersion = Pattern.compile(rule.os().version()).matcher(System.getProperty("os.version")).matches();
+                    if (matchesOS && matchesOSVersion) {
+                        switch(rule.action()) {
+                            case ALLOW -> allow = true;
+                            case DISALLOW -> allow = false;
+                        }
+                    }
+                }
+                //TODO Prefer non-nightly version over nightly
+            }
+        }
+        return allow;
+    }
+
     private String fetchJSON(final URL url) throws IOException {
         InputStream inputStream = url.openStream();
 
@@ -414,19 +625,19 @@ public final class MCPRD {
         return lines.toString();
     }
 
-    private void downloadFile(@NotNull final URL urlFile, final File file, final boolean overwrite) {
+    private void downloadFile(@NotNull final URL urlFile, final File file, final boolean overwrite) throws IOException {
         if (!file.getParentFile().exists()) throw new RuntimeException(String.format("Parent directory \"%s\" does not exist!", file.getParentFile().getPath()));
-        if (file.isFile() && !overwrite) {
-            System.out.println(String.format("File \"%s\" already exists but can't overwrite", file.getPath()));
-            return;
-        }
-        try {
-            ReadableByteChannel readableByteChannel = Channels.newChannel(urlFile.openStream());
-            try (FileOutputStream fos = new FileOutputStream(file)) {
-                fos.getChannel().transferFrom(readableByteChannel, 0, Long.MAX_VALUE);//Will ONLY transfer up to 16 MB... but that shouldn't be an issue...
+        if (file.isFile()) {
+            if (!overwrite) {
+                System.out.println(String.format("File \"%s\" already exists but can't overwrite", file.getPath()));
+                return;
+            } else {
+                System.out.println(String.format("File \"%s\" already exists, but overwriting...", file.getPath()));
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        }
+        ReadableByteChannel readableByteChannel = Channels.newChannel(urlFile.openStream());
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            fos.getChannel().transferFrom(readableByteChannel, 0, Long.MAX_VALUE);//Will ONLY transfer up to 16 MB... but that shouldn't be an issue...
         }
     }
 

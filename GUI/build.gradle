@@ -1,19 +1,16 @@
 plugins {
+    id 'application'
     id 'org.openjfx.javafxplugin' version '0.0.13'
 }
 
 dependencies {
     implementation(
-            project(':')
+            project(':Lib')
     )
 }
 
-java {
-    jar {
-        manifest {
-//            attributes 'Main-Class': 'org.slave.mcprd.Main'
-        }
-    }
+application {
+    mainClass = 'org.slave.mcprd.gui.Main'
 }
 
 javafx {
