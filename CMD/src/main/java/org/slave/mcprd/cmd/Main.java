@@ -12,7 +12,8 @@ public final class Main {
         String mcpDir = null, mcVersion = null;
         boolean ignoreMCP = false;
         boolean jars = false, client = false, server = false;
-        boolean libraries = false, natives = false, resources = false;
+        boolean libraries = false, natives = false;
+        boolean resources = false, proper = false;
         Boolean linux = null, windows = null, osx = null;
         boolean overwrite = false;
         for(int i = 0; i < args.length; i++) {
@@ -35,6 +36,7 @@ public final class Main {
             if (arg.equals("--osx")) osx = true;
 
             if (arg.equals("--resources")) resources = true;
+            if (arg.equals("--proper")) proper = true;
 
             if (arg.equals("--overwrite")) overwrite = true;
         }
@@ -74,6 +76,7 @@ public final class Main {
                     osx,
 
                     resources,
+                    proper,
 
                     overwrite
             );

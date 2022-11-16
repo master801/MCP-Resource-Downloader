@@ -10,10 +10,6 @@ configure(allprojects) {
     group 'org.slave'
     version '1.0-SNAPSHOT'
 
-    dependencies {
-        implementation('com.squareup.moshi:moshi:1.14.0')
-    }
-
     lombok {
         version = '1.18.24'//Manually specify version
     }

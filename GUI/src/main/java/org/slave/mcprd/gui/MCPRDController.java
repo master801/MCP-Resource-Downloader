@@ -155,6 +155,7 @@ public final class MCPRDController {
                         windows,
                         osx,
                         checkBoxResources.selectedProperty().get(),
+                        false,
                         checkBoxOverwrite.selectedProperty().get()
                 );
             } catch (IOException e) {
