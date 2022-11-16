@@ -81,7 +81,7 @@ public final class MCPRDController {
                             if (version.type().equals(VersionManifest.Version.TYPE_SNAPSHOT)) continue;
                             if (version.id().startsWith("a") || version.id().startsWith("b") || version.id().startsWith("c") || version.id().startsWith("inf-") || version.id().startsWith("rd-")) continue;
                             versionIDs.add(version.id());
-                            if (version.id().equals("1.6.4")) break;//Stop parsing versions after 1.6.4
+                            if (version.id().equals("1.7.10")) break;//Stop parsing versions after 1.7.10
                         }
                         Collections.reverse(versionIDs);//Make it look pretty
                         choiceBoxVersion.getItems().addAll(versionIDs);
@@ -153,9 +153,10 @@ public final class MCPRDController {
                         checkBoxNatives.selectedProperty().get(),
                         linux,
                         windows,
+                        System.getProperty("os.arch").endsWith("86"),
+                        System.getProperty("os.arch").endsWith("64"),
                         osx,
                         checkBoxResources.selectedProperty().get(),
-                        false,
                         checkBoxOverwrite.selectedProperty().get()
                 );
             } catch (IOException e) {

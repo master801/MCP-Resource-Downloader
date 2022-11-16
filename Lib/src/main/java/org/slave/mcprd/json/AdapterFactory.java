@@ -34,6 +34,9 @@ public final class AdapterFactory implements JsonAdapter.Factory {
         else if (type == Version.Library.Rule.class) return new Version.Library.Rule.Adapter(moshi);
         else if (type == Version.Library.Rule.Action.class) return new Version.Library.Rule.Action.Adapter();
         else if (type == Version.Library.Rule.OS.class) return new Version.Library.Rule.OS.Adapter();
+        else if (type == Version.Logging.class) return new Version.Logging.Adapter(moshi);
+        else if (type == Version.Logging.Client.class) return new Version.Logging.Client.Adapter(moshi);
+        else if (type == Version.Logging.Client.File.class) return new Version.Logging.Client.File.Adapter();
 
         if (type == Resources.class) return new Resources.Adapter(moshi);
         else if (type == Resources.ResourceObject.class) return new Resources.ResourceObject.Adapter();

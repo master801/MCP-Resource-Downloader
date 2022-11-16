@@ -18,9 +18,10 @@ Print out all Minecraft versions: `gradlew -p CMD run`<br/>
 - `--natives` - If natives should be downloaded and extracted (**NOT** required)
 - `--linux` - If Linux natives should be downloaded and extracted (**NOT** required even if `--natives` used)
 - `--windows` - If Windows natives should be downloaded and extracted (**NOT** required even if `--natives` used)
+- `--w32` - If Windows 32-bit natives should be downloaded and extracted (**NOT** required even if `--windows` used)
+- `--w64` - If Windows 64-bit natives should be downloaded and extracted (**NOT** required even if `--windows` used)
 - `--osx` - If OSX natives should be downloaded and extracted (**NOT** required even if `--natives` used)
 - `--resources` - If resources (sound, music) should be downloaded (**NOT** required)
-- `--proper` - If resources (sound, music) should be properly extracted (for MCP, do **NOT** use this)
 - `--overwrite` - If downloaded files should be overwritten should one already exist (**NOT** required)
 
 ### Example:
@@ -39,6 +40,7 @@ Print out all Minecraft versions: `gradlew -p CMD run`<br/>
 `gradlew -p GUI run`
 
 ## Supported versions:
+- [X] 1.7.10
 - [X] 1.6.4
 - [X] 1.2.5
 - [X] 1.2.3
@@ -46,15 +48,15 @@ Print out all Minecraft versions: `gradlew -p CMD run`<br/>
 ## Known Issues:
 - Server jar can't decompile
   - This is due to Mojang hotfixing server jars years later, due to an exploit / bug fix or Java 8 issue. Not easily fixable unless MCP files are repaired.
-- 1.6+ versions aren't supported
-  - Yes, it's being worked on it. We know.
+- Certain versions aren't working
+  - Create a new issue with the specific version (both Minecraft and MCP) you're having troubles with.
 - Mac OS (OSX) users may not have natives extracted
   - Create a new issue. I don't have a Mac, so I don't know what Java returns.
 
 Found an issue? Create a new GitHub issue.
 
 ## Workarounds:
-- 1.6.4
+- 1.6+
   - MCP can't decompile because it tries copying launcher files
     - Manually run the decompile script with
     `runtime\bin\python\python_mcp runtime\decompile.py --nocopy --client`

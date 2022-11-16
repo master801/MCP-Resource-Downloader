@@ -42,7 +42,8 @@ public final class MCPRD {
                 .build();
     }
 
-    public void download(final String mcpDir, final String mcVersion, final boolean ignoreMCP, final boolean dlJars, final boolean clientOnly, final boolean serverOnly, final boolean dlLibraries, final boolean dlNatives, final boolean linux, final boolean windows, final boolean osx, final boolean dlResources, final boolean proper, final boolean overwrite) throws RuntimeException, IOException {
+    @SuppressWarnings("ConstantValue")
+    public void download(final String mcpDir, final String mcVersion, final boolean ignoreMCP, final boolean dlJars, final boolean clientOnly, final boolean serverOnly, final boolean dlLibraries, final boolean dlNatives, final boolean linux, final boolean windows, final boolean w32, final boolean w64, final boolean osx, final boolean dlResources, final boolean overwrite) throws RuntimeException, IOException {
         VersionManifest versionManifest;
         try {
             System.out.println("Getting \"version_manifest_v2.json\"...");
@@ -105,7 +106,7 @@ public final class MCPRD {
 
         switch(version.assets()) {
             case PRE_1_6 -> dirNatives = new File(dirJarsBin, "natives");
-            case LEGACY -> dirNatives = new File(dirJarsVersionsID, String.format("%s-natives", version.id()));
+            case LEGACY, _1_7_10 -> dirNatives = new File(dirJarsVersionsID, String.format("%s-natives", version.id()));
             default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!", version.assets().assets));
         }
 
@@ -117,7 +118,7 @@ public final class MCPRD {
                         if (!dirJarsBin.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirJarsBin.getPath()));
                     }
                 }
-                case LEGACY -> {
+                case LEGACY, _1_7_10 -> {
                     if (!dirJarsVersions.exists()) {
                         if (!dirJarsVersions.mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", dirJarsVersions.getPath()));
                     }
@@ -140,7 +141,7 @@ public final class MCPRD {
                     }
                     dir = dirJarsBin;
                 }
-                case LEGACY -> {
+                case LEGACY, _1_7_10 -> {
                     if (!dirLibraries.exists()) {
                         if (!dirLibraries.mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", dirLibraries.getPath()));
                     }
@@ -156,7 +157,7 @@ public final class MCPRD {
             if (!dirNatives.exists()) {
                 if (!dirNatives.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirNatives.getPath()));
             }
-            downloadAndExtractNatives(dirNatives, version, linux, windows, osx, overwrite);
+            downloadAndExtractNatives(dirNatives, version, linux, windows, w32, w64, osx, overwrite);
             System.out.println("Done downloading native files!\n");
         }
         if (dlResources) {
@@ -170,7 +171,9 @@ public final class MCPRD {
             }
 
             File dir;
-            if (assets.virtual()) {//legacy (1.6+)
+            if (assets.map_to_resources()) {//pre-1.6
+                dir = dirJarsResources;
+            } else if (assets.virtual() || (!assets.virtual() && !assets.map_to_resources())) {//legacy (1.6+) & 1.7+
                 File dirAssets = new File(dirJars, "assets");
                 File dirAssetsIndexes = new File(dirAssets, "indexes");
                 File dirAssetsObjects = new File(dirAssets, "objects");
@@ -178,25 +181,24 @@ public final class MCPRD {
                 if (!dirAssets.exists()) {
                     if (!dirAssets.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirAssets.getPath()));
                 }
-                if (proper) {
+                if (version.assets() == Version.Assets.LEGACY) {//legacy does not use the index system
+                    dir = dirAssets;
+                } else {
                     if (!dirAssetsIndexes.exists()) {
                         if (!dirAssetsIndexes.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirAssetsIndexes.getPath()));
                     }
                     if (!dirAssetsObjects.exists()) {
                         if (!dirAssetsObjects.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirAssetsObjects.getPath()));
                     }
+                    dir = dirAssetsObjects;
+
                     serializeJSON(
                             new File(dirAssetsIndexes, String.format("%s.json", version.assets().assets)),
                             Assets.class,
                             assets,
                             overwrite
                     );//Serialize instead of downloading to avoid additional network calls
-                    dir = dirAssetsObjects;
-                } else {
-                    dir = dirAssets;
                 }
-            } else if (assets.map_to_resources()) {//pre-1.6
-                dir = dirJarsResources;
             } else {
                 throw new RuntimeException("Failed to correctly set asset directory! This is unexpected!");
             }
@@ -205,7 +207,7 @@ public final class MCPRD {
                 if (!dir.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dir.getPath()));
             }
 
-            downloadResources(dir, assets, proper, overwrite);
+            downloadResources(dir, version, assets, overwrite);
             System.out.println("Done downloading asset files!\n");
         }
     }
@@ -233,7 +235,7 @@ public final class MCPRD {
 
             if (version.assets() == Version.Assets.PRE_1_6) {//dir expects to be "jars/bin"
                 dest = new File(dirJarsBin, "minecraft.jar");
-            } else if (version.assets() == Version.Assets.LEGACY) {//dir expects to be "jars"
+            } else if (version.assets() == Version.Assets.LEGACY || version.assets() == Version.Assets._1_7_10) {//dir expects to be "jars"
                 dest = new File(dirJarsVersionsID, String.format("%s.jar", version.id()));
                 serializeJSON(
                         new File(dirJarsVersionsID, String.format("%s.json", version.id())),
@@ -273,12 +275,12 @@ public final class MCPRD {
         if (status == 0) System.out.println("Didn't download any jar files?!");
     }
 
-    public void downloadAndExtractNatives(@NotNull File dirNatives, @NotNull final Version version, final boolean linux, final boolean windows, final boolean osx, final boolean overwrite) {
-        List<Version.Library> natives = downloadNatives(dirNatives, version, linux, windows, osx, overwrite);
-        extractNatives(dirNatives, natives, linux, windows, osx, overwrite);
+    public void downloadAndExtractNatives(@NotNull File dirNatives, @NotNull final Version version, final boolean linux, final boolean windows, final boolean w32, final boolean w64, final boolean osx, final boolean overwrite) {
+        List<Version.Library> natives = downloadNatives(dirNatives, version, linux, windows, w32, w64, osx, overwrite);
+        extractNatives(dirNatives, natives, linux, windows, w32, w64, osx, overwrite);
     }
 
-    private List<Version.Library> downloadNatives(@NotNull File dirNatives, @NotNull final Version version, final boolean linux, final boolean windows, final boolean osx, final boolean overwrite) {
+    private List<Version.Library> downloadNatives(@NotNull File dirNatives, @NotNull final Version version, final boolean linux, final boolean windows, final boolean w32, final boolean w64, final boolean osx, final boolean overwrite) {
         List<Version.Library> natives = new ArrayList<>();
 
         for(Version.Library library : version.libraries()) {
@@ -296,6 +298,12 @@ public final class MCPRD {
             }
             if (windows && library.downloads().classifiers().natives_windows() != null) {
                 downloadNative(dirNatives, library.downloads().classifiers().natives_windows(), overwrite);
+            }
+            if (windows && w32 && library.downloads().classifiers().natives_windows_32() != null) {
+                downloadNative(dirNatives, library.downloads().classifiers().natives_windows_32(), overwrite);
+            }
+            if (windows && w64 && library.downloads().classifiers().natives_windows_64() != null) {
+                downloadNative(dirNatives, library.downloads().classifiers().natives_windows_64(), overwrite);
             }
             if (osx && library.downloads().classifiers().natives_osx() != null) {
                 downloadNative(dirNatives, library.downloads().classifiers().natives_osx(), overwrite);
@@ -320,13 +328,19 @@ public final class MCPRD {
         }
     }
 
-    private void extractNatives(@NotNull final File dirNatives, @NotNull final List<Version.Library> nativeFiles, final boolean linux, final boolean windows, final boolean osx, final boolean overwrite) {
+    private void extractNatives(@NotNull final File dirNatives, @NotNull final List<Version.Library> nativeFiles, final boolean linux, final boolean windows, final boolean w32, final boolean w64, final boolean osx, final boolean overwrite) {
         for(Version.Library _native : nativeFiles) {
             if (linux && _native.downloads().classifiers().natives_linux() != null) {
                 extractNative(dirNatives, _native, _native.downloads().classifiers().natives_linux(), overwrite);
             }
-            if (windows && _native.downloads().classifiers().natives_windows() != null) {
-                extractNative(dirNatives, _native, _native.downloads().classifiers().natives_windows(), overwrite);
+            if (windows) {
+                if (_native.downloads().classifiers().natives_windows() != null) {
+                    extractNative(dirNatives, _native, _native.downloads().classifiers().natives_windows(), overwrite);
+                } else if (_native.downloads().classifiers().natives_windows_32() != null && w32) {
+                    extractNative(dirNatives, _native, _native.downloads().classifiers().natives_windows_32(), overwrite);
+                } else if (_native.downloads().classifiers().natives_windows_64() != null && w64) {
+                    extractNative(dirNatives, _native, _native.downloads().classifiers().natives_windows_64(), overwrite);
+                }
             }
             if (osx && _native.downloads().classifiers().natives_osx() != null) {
                 extractNative(dirNatives, _native, _native.downloads().classifiers().natives_osx(), overwrite);
@@ -422,7 +436,7 @@ public final class MCPRD {
                 case PRE_1_6 -> {//dir should be jars/bin
                     fileLibrary = new File(dir, String.format("%s.jar", library.name().split(":", 3)[1]));
                 }
-                case LEGACY -> {//dir should be jars/libraries
+                case LEGACY, _1_7_10 -> {//dir should be jars/libraries
                     if (library.downloads().artifact() != null) {
                         fileLibrary = new File(dir, library.downloads().artifact().path());
                         if (!fileLibrary.getParentFile().exists()) {
@@ -442,24 +456,25 @@ public final class MCPRD {
                         overwrite
                 );
             } catch (IOException e) {
-                throw new RuntimeException(String.format("Failed to download library \"%s\"!", library.name()), e);
+                throw new RuntimeException(String.format("Failed to download library \"%s\"!\n", library.name()), e);
             }
 
-            System.out.println(String.format("Done downloading library \"%s\"!", library.name()));
+            System.out.println(String.format("Done downloading library \"%s\"!\n", library.name()));
         }
     }
 
-    public void downloadResources(@NotNull final File dir, @NotNull final Assets assets, final boolean proper, final boolean overwrite) {
+    @SuppressWarnings("ConstantValue")
+    public void downloadResources(@NotNull final File dir, @NotNull Version version, @NotNull final Assets assets, final boolean overwrite) {
         for(Entry<String, Asset> entry : assets.objects().entrySet()) {
             File file = null;
-            if (assets.map_to_resources() || (!proper && assets.virtual())) {
+            if (assets.map_to_resources() || (version.assets() == Version.Assets.LEGACY && assets.virtual())) {
                 file = new File(dir, entry.getKey());//dir is expected to be set to "jars/resources", or "jars/assets" if not proper and virtual
                 if (!file.getParentFile().exists()) {
                     if (!file.getParentFile().mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", file.getParentFile().getPath()));
                 }
             } else {
-                if (assets.virtual()) {
-                    String dirAssetObjectName = entry.getValue().hash().substring(0, 2);//FIXME This does not seem right...
+                if (assets.virtual() || (!assets.map_to_resources() && !assets.virtual())) {
+                    String dirAssetObjectName = entry.getValue().hash().substring(0, 2);
                     File dirAssetObject = new File(dir, dirAssetObjectName);//dir is expected to be set to "jars/assets/objects"
                     if (!dirAssetObject.exists()) {
                         if (!dirAssetObject.mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", dirAssetObject.getPath()));
@@ -493,8 +508,6 @@ public final class MCPRD {
             if (!overwrite) {
                 System.out.println(String.format("Asset \"%s\" already exists and can't overwrite", fileAsset.getPath()));
                 return;
-            } else {
-                System.out.println(String.format("Asset \"%s\" already exists, but overwriting...", fileAsset.getPath()));
             }
         }
 
