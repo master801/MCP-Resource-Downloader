@@ -23,6 +23,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.jar.JarEntry;
@@ -104,10 +105,14 @@ public final class MCPRD {
             if (!dirJars.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirJars.getPath()));
         }
 
-        switch(version.assets()) {
+        switch (version.assets()) {
             case PRE_1_6 -> dirNatives = new File(dirJarsBin, "natives");
-            case LEGACY, _1_7_10 -> dirNatives = new File(dirJarsVersionsID, String.format("%s-natives", version.id()));
-            default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!", version.assets().assets));
+            case LEGACY -> dirNatives = new File(dirJarsVersionsID, String.format("%s-natives", version.id()));
+            case NEWER -> {
+                dirNatives = new File(dirJarsVersionsID, String.format("%s-natives", version.id()));
+                System.out.println(String.format("Potentially unexpected version \"%s\"!", version.id()));
+            }
+            default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!?", version.assets().assets));
         }
 
         if (dlJars) {
@@ -118,7 +123,7 @@ public final class MCPRD {
                         if (!dirJarsBin.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirJarsBin.getPath()));
                     }
                 }
-                case LEGACY, _1_7_10 -> {
+                case LEGACY, NEWER -> {
                     if (!dirJarsVersions.exists()) {
                         if (!dirJarsVersions.mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", dirJarsVersions.getPath()));
                     }
@@ -141,7 +146,7 @@ public final class MCPRD {
                     }
                     dir = dirJarsBin;
                 }
-                case LEGACY, _1_7_10 -> {
+                case LEGACY, NEWER -> {
                     if (!dirLibraries.exists()) {
                         if (!dirLibraries.mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", dirLibraries.getPath()));
                     }
@@ -149,7 +154,7 @@ public final class MCPRD {
                 }
                 default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!", version.assets().assets));
             }
-            downloadLibraries(dir, version, overwrite);
+            downloadLibraries(dir, version, overwrite, linux, windows, osx);
             System.out.println("Done downloading library files!\n");
         }
         if (dlNatives) {
@@ -193,7 +198,7 @@ public final class MCPRD {
                     dir = dirAssetsObjects;
 
                     serializeJSON(
-                            new File(dirAssetsIndexes, String.format("%s.json", version.assets().assets)),
+                            new File(dirAssetsIndexes, String.format("%s.json", version.assetIndex().id())),//use version.assetIndex.id instead of version.assets.assets because it may return null (for "newer" versions)
                             Assets.class,
                             assets,
                             overwrite
@@ -235,7 +240,7 @@ public final class MCPRD {
 
             if (version.assets() == Version.Assets.PRE_1_6) {//dir expects to be "jars/bin"
                 dest = new File(dirJarsBin, "minecraft.jar");
-            } else if (version.assets() == Version.Assets.LEGACY || version.assets() == Version.Assets._1_7_10) {//dir expects to be "jars"
+            } else if (version.assets() == Version.Assets.LEGACY || version.assets() == Version.Assets.NEWER) {//dir expects to be "jars"
                 dest = new File(dirJarsVersionsID, String.format("%s.jar", version.id()));
                 serializeJSON(
                         new File(dirJarsVersionsID, String.format("%s.json", version.id())),
@@ -286,9 +291,25 @@ public final class MCPRD {
         for(Version.Library library : version.libraries()) {
             if (library.natives() == null) continue;
             if (!checkLibraryRules(library)) {
-                System.out.println(String.format("Disallowed native \"%s\" for this OS", library.name()));
+                System.out.println(String.format("Disallowed native \"%s\"", library.name()));
             } else {
                 natives.add(library);
+            }
+        }
+
+        int lwjgl = 0;
+        for(Version.Library _native : natives) {
+            if (_native.name().name().equals("lwjgl-platform")) lwjgl++;
+        }
+        if (lwjgl > 1) {
+            Iterator<Version.Library> iterator = natives.iterator();
+            while(iterator.hasNext()) {
+                Version.Library library = iterator.next();
+                if (!osx && library.name().name().equals("lwjgl-platform") && library.isNightly()) {//OSX prefers nightly, but Windows does not (if more than 1 LWJGL)
+                    iterator.remove();
+                    System.out.println(String.format("Disallowing nightly native \"%s\"", Constants.Maven.to(library.name())));
+                    break;
+                }
             }
         }
 
@@ -417,7 +438,7 @@ public final class MCPRD {
         System.out.println("Done extracting native jar\n");
     }
 
-    public void downloadLibraries(@NotNull File dir, @NotNull final Version version, final boolean overwrite) {
+    public void downloadLibraries(@NotNull File dir, @NotNull final Version version, final boolean linux, final boolean windows, final boolean osx, final boolean overwrite) {
         List<Version.Library> toDownload = new ArrayList<>();
         for(Version.Library library : version.libraries()) {
             if (library.natives() != null) continue;
@@ -434,9 +455,9 @@ public final class MCPRD {
             File fileLibrary;
             switch(version.assets()) {
                 case PRE_1_6 -> {//dir should be jars/bin
-                    fileLibrary = new File(dir, String.format("%s.jar", library.name().split(":", 3)[1]));
+                    fileLibrary = new File(dir, String.format("%s.jar", library.name().name()));
                 }
-                case LEGACY, _1_7_10 -> {//dir should be jars/libraries
+                case LEGACY, NEWER -> {//dir should be jars/libraries
                     if (library.downloads().artifact() != null) {
                         fileLibrary = new File(dir, library.downloads().artifact().path());
                         if (!fileLibrary.getParentFile().exists()) {
@@ -562,22 +583,15 @@ public final class MCPRD {
         if (library.rules() != null) {
             for(Version.Library.Rule rule : library.rules()) {
                 if (rule.os() == null) {
-                    switch(rule.action()) {
-                        case ALLOW -> allow = true;
-                        case DISALLOW -> allow = false;
-                    }
+                    allow = rule.action().value;
                 } else {//TODO nightly version is used for OSX exclusively
                     boolean matchesOS = rule.os().name().startsWith(System.getProperty("os.name").toLowerCase());
                     boolean matchesOSVersion = false;
                     if (rule.os().version() != null) matchesOSVersion = Pattern.compile(rule.os().version()).matcher(System.getProperty("os.version")).matches();
                     if (matchesOS && matchesOSVersion) {
-                        switch(rule.action()) {
-                            case ALLOW -> allow = true;
-                            case DISALLOW -> allow = false;
-                        }
+                        allow = rule.action().value;
                     }
                 }
-                //TODO Prefer non-nightly version over nightly
             }
         }
         return allow;

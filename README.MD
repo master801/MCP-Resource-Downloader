@@ -26,20 +26,25 @@ Print out all Minecraft versions: `gradlew -p CMD run`<br/>
 
 ### Example:
 `gradlew -p CMD run --args="--mcp mcp62 --mcVersion 1.2.5 --jars --client --libraries --natives --resources --overwrite"`<br/>
+
 `gradlew -p CMD run --args="--mcp mcp811 --mcVersion 1.6.4 --jars --client --libraries --natives --resources --overwrite"`<br/>
 
 ### Troubleshooting:
 - I keep getting error `FileNotFoundException` `MCP directory "XXXXXX" does not exist!`!
   - Make sure when inputting the `--mcp` argument you're using either a relative location to the `CMD` folder
-  (if MCP folder is in root directory -where `build.gradle` is-, use `../{MCP directory}`),
-  or an exact location of where the MCP folder is (`C:\Users\User\Downloads\{MCP directory}`).
+  (if MCP folder is in root directory -where `build.gradle` is-, use `../<MCP directory>`),
+  or an exact location of where the MCP folder is (ex: `C:\Users\User\Downloads\<MCP directory>`).
 
 ## GUI
+
+Easier to use, however more limited than CMD.
 
 ### Usage:
 `gradlew -p GUI run`
 
 ## Supported versions:
+- [X] 1.12
+- [X] 1.8
 - [X] 1.7.10
 - [X] 1.6.4
 - [X] 1.2.5
@@ -47,19 +52,22 @@ Print out all Minecraft versions: `gradlew -p CMD run`<br/>
 
 ## Known Issues:
 - Server jar can't decompile
-  - This is due to Mojang hotfixing server jars years later, due to an exploit / bug fix or Java 8 issue. Not easily fixable unless MCP files are repaired.
+  - This is due to Mojang hotfixing server jars years later. This is an MCP problem.
 - Certain versions aren't working
   - Create a new issue with the specific version (both Minecraft and MCP) you're having troubles with.
 - Mac OS (OSX) users may not have natives extracted
-  - Create a new issue. I don't have a Mac, so I don't know what Java returns.
+  - Create a new issue. I don't have a Mac, so this cannot be tested.
 
 Found an issue? Create a new GitHub issue.
 
 ## Workarounds:
+- 1.8+
+  - Starting the client throws error `Can't find the resource index file: assets/indexes/1.8.json`
+    - Another MCP problem. In directory `<MCP Dir>/jars/assets/indexes`, rename file `<version>.json` (ex: `1.12`) to `1.8.json`
 - 1.6+
   - MCP can't decompile because it tries copying launcher files
     - Manually run the decompile script with
-    `runtime\bin\python\python_mcp runtime\decompile.py --nocopy --client`
+    `runtime/bin/python/python_mcp runtime/decompile.py --nocopy --client` (Windows: `runtime\bin\python\python_mcp runtime\decompile.py --nocopy --client`)
     (in MCP directory) after running MCP-RD in client mode.
 - Mac OS (OSX) users may not have natives extracted
   - Manually extract jars files

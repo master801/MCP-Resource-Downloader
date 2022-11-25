@@ -8,7 +8,7 @@ configure(allprojects) {
     apply plugin: 'io.freefair.lombok'
 
     group 'org.slave'
-    version '1.0-SNAPSHOT'
+    version '1.0-Free'
 
     lombok {
         version = '1.18.24'//Manually specify version

@@ -5,6 +5,7 @@ import com.squareup.moshi.JsonReader;
 import com.squareup.moshi.JsonWriter;
 import com.squareup.moshi.Moshi;
 import lombok.RequiredArgsConstructor;
+import org.slave.mcprd.Constants;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -199,9 +200,7 @@ public record Version(
 
         LEGACY("legacy"),//1.6
 
-        _1_7_10("1.7.10"),
-
-        ;
+        NEWER(null);//Anything past 1.6
 
         public final String assets;
 
@@ -211,9 +210,9 @@ public record Version(
             public Assets fromJson(final JsonReader reader) throws IOException {
                 String assetsString = reader.nextString();
                 for(Version.Assets assets : Version.Assets.values()) {
-                    if (assets.assets.equals(assetsString)) return assets;
+                    if (assets.assets != null && assets.assets.equals(assetsString)) return assets;
                 }
-                return null;
+                return Assets.NEWER;
             }
 
             @Override
@@ -235,7 +234,8 @@ public record Version(
 
             @Override
             public Downloads fromJson(final JsonReader reader) throws IOException {
-                Downloads.Download client = null, server = null, windows_server = null;
+                Downloads.Download client = null;
+                Downloads.Download server = null, windows_server = null;
                 reader.beginObject();
                 while(reader.hasNext()) {
                     switch(reader.nextName()) {
@@ -262,9 +262,11 @@ public record Version(
                 moshi.adapter(Downloads.Download.class)
                         .toJson(writer, value.server());
 
-                writer.name("windows_server");
-                moshi.adapter(Downloads.Download.class)
-                        .toJson(writer, value.windows_server());
+                if (value.windows_server() != null) {
+                    writer.name("windows_server");
+                    moshi.adapter(Downloads.Download.class)
+                            .toJson(writer, value.windows_server());
+                }
 
                 writer.endObject();
             }
@@ -350,7 +352,16 @@ public record Version(
 
     }
 
-    public record Library(Library.Downloads downloads, Extract extract, String name, Library.Rule[] rules, Natives natives) {
+    public record Library(Library.Downloads downloads, Extract extract, Constants.Maven name, Library.Rule[] rules, Natives natives) {
+
+        public String[] getVersionSplit() {
+            return name().version().split("-", 3);
+        }
+
+        public boolean isNightly() {//Fucking LWJGL -.-;
+            String[] versionSplit = getVersionSplit();
+            return versionSplit.length > 1 && versionSplit[1].equals("nightly");
+        }
 
         @RequiredArgsConstructor
         public static final class Adapter extends JsonAdapter<Library> {
@@ -361,7 +372,7 @@ public record Version(
             public Library fromJson(final JsonReader reader) throws IOException {
                 Library.Downloads downloads = null;
                 Extract extract = null;
-                String name = null;
+                Constants.Maven name = null;
                 Version.Library.Rule[] rules = null;
                 Natives natives = null;
 
@@ -370,7 +381,7 @@ public record Version(
                     switch(reader.nextName()) {
                         case "downloads" -> downloads = moshi.adapter(Library.Downloads.class).fromJson(reader);
                         case "extract" -> extract = moshi.adapter(Library.Extract.class).fromJson(reader);
-                        case "name" -> name = reader.nextString();
+                        case "name" -> name = Constants.Maven.from(reader.nextString());
                         case "rules" -> rules = moshi.adapter(Library.Rule[].class).fromJson(reader);
                         case "natives" -> natives = moshi.adapter(Library.Natives.class).fromJson(reader);
                     }
@@ -397,7 +408,7 @@ public record Version(
                 }
 
                 writer.name("name")
-                        .value(value.name());
+                        .value(Constants.Maven.to(value.name()));
 
                 if (value.natives() != null) {
                     writer.name("natives");
@@ -509,7 +520,7 @@ public record Version(
 
             }
 
-            public record Classifiers(Library.Downloads.Artifact natives_linux, Library.Downloads.Artifact natives_osx, Library.Downloads.Artifact natives_windows, Library.Downloads.Artifact natives_windows_32, Library.Downloads.Artifact natives_windows_64) {
+            public record Classifiers(Library.Downloads.Artifact natives_linux, Library.Downloads.Artifact natives_osx, Library.Downloads.Artifact natives_windows, Library.Downloads.Artifact natives_windows_32, Library.Downloads.Artifact natives_windows_64, Library.Downloads.Artifact sources, Library.Downloads.Artifact javadoc) {
 
                 @RequiredArgsConstructor
                 public static final class Adapter extends JsonAdapter<Classifiers> {
@@ -520,6 +531,7 @@ public record Version(
                     public Classifiers fromJson(final JsonReader reader) throws IOException {
                         Library.Downloads.Artifact natives_linux = null, natives_osx = null;
                         Library.Downloads.Artifact natives_windows = null, natives_windows_32 = null, natives_windows_64 = null;
+                        Library.Downloads.Artifact sources = null, javadoc = null;
 
                         reader.beginObject();
                         while(reader.hasNext()) {
@@ -529,10 +541,12 @@ public record Version(
                                 case "natives-windows" -> natives_windows = moshi.adapter(Library.Downloads.Artifact.class).fromJson(reader);
                                 case "natives-windows-32" -> natives_windows_32 = moshi.adapter(Library.Downloads.Artifact.class).fromJson(reader);
                                 case "natives-windows-64" -> natives_windows_64 = moshi.adapter(Library.Downloads.Artifact.class).fromJson(reader);
+                                case "sources" -> sources = moshi.adapter(Library.Downloads.Artifact.class).fromJson(reader);//WTF
+                                case "javadoc" -> javadoc = moshi.adapter(Library.Downloads.Artifact.class).fromJson(reader);//WTF
                             }
                         }
                         reader.endObject();
-                        return new Classifiers(natives_linux, natives_osx, natives_windows, natives_windows_32, natives_windows_64);
+                        return new Classifiers(natives_linux, natives_osx, natives_windows, natives_windows_32, natives_windows_64, sources, javadoc);
                     }
 
                     @Override
@@ -567,6 +581,17 @@ public record Version(
                             writer.name("natives-windows-64");
                             moshi.adapter(Library.Downloads.Artifact.class)
                                     .toJson(writer, value.natives_windows_64());
+                        }
+
+                        if (value.sources() != null) {
+                            writer.name("sources");
+                            moshi.adapter(Library.Downloads.Artifact.class)
+                                    .toJson(writer, value.sources());
+                        }
+                        if (value.javadoc() != null) {
+                            writer.name("javadoc");
+                            moshi.adapter(Library.Downloads.Artifact.class)
+                                    .toJson(writer, value.javadoc());
                         }
 
                         writer.endObject();
@@ -698,11 +723,12 @@ public record Version(
             @RequiredArgsConstructor
             public enum Action {
 
-                ALLOW("allow"),
+                ALLOW("allow", true),
 
-                DISALLOW("disallow");
+                DISALLOW("disallow", false);
 
                 public final String action;
+                public final boolean value;
 
                 public static final class Adapter extends JsonAdapter<Version.Library.Rule.Action> {
 

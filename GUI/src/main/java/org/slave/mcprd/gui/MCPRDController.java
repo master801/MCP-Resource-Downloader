@@ -81,7 +81,7 @@ public final class MCPRDController {
                             if (version.type().equals(VersionManifest.Version.TYPE_SNAPSHOT)) continue;
                             if (version.id().startsWith("a") || version.id().startsWith("b") || version.id().startsWith("c") || version.id().startsWith("inf-") || version.id().startsWith("rd-")) continue;
                             versionIDs.add(version.id());
-                            if (version.id().equals("1.7.10")) break;//Stop parsing versions after 1.7.10
+                            if (version.id().equals("1.12")) break;//Stop parsing versions after 1.12
                         }
                         Collections.reverse(versionIDs);//Make it look pretty
                         choiceBoxVersion.getItems().addAll(versionIDs);
