@@ -4,6 +4,7 @@ import com.squareup.moshi.JsonAdapter;
 import com.squareup.moshi.Moshi;
 import org.slave.mcprd.models.Assets;
 import org.slave.mcprd.models.Resources;
+import org.slave.mcprd.models.Rule;
 import org.slave.mcprd.models.Version;
 import org.slave.mcprd.models.VersionManifest;
 
@@ -20,6 +21,9 @@ public final class AdapterFactory implements JsonAdapter.Factory {
         else if (type == VersionManifest.Version.class) return new VersionManifest.Version.Adapter(moshi);
 
         if (type == Version.class) return new Version.Adapter(moshi);
+        else if (type == Version.Arguments.class) return new Version.Arguments.Adapter(moshi);
+        else if (type == Version.Arguments.Argument.class) return new Version.Arguments.Argument.Adapter(moshi);
+        else if (type == Version.Arguments.Argument.Value.class) return new Version.Arguments.Argument.Value.Adapter();
         else if (type == Version.Assets.class) return new Version.Assets.Adapter();
         else if (type == Version.AssetIndex.class) return new Version.AssetIndex.Adapter();
         else if (type == Version.Downloads.class) return new Version.Downloads.Adapter(moshi);
@@ -31,9 +35,9 @@ public final class AdapterFactory implements JsonAdapter.Factory {
         else if (type == Version.Library.Downloads.Artifact.class) return new Version.Library.Downloads.Artifact.Adapter();
         else if (type == Version.Library.Downloads.Classifiers.class) return new Version.Library.Downloads.Classifiers.Adapter(moshi);
         else if (type == Version.Library.Natives.class) return new Version.Library.Natives.Adapter();
-        else if (type == Version.Library.Rule.class) return new Version.Library.Rule.Adapter(moshi);
-        else if (type == Version.Library.Rule.Action.class) return new Version.Library.Rule.Action.Adapter();
-        else if (type == Version.Library.Rule.OS.class) return new Version.Library.Rule.OS.Adapter();
+        else if (type == Rule.class) return new Rule.Adapter(moshi);
+        else if (type == Rule.Action.class) return new Rule.Action.Adapter();
+        else if (type == Rule.OS.class) return new Rule.OS.Adapter();
         else if (type == Version.Logging.class) return new Version.Logging.Adapter(moshi);
         else if (type == Version.Logging.Client.class) return new Version.Logging.Client.Adapter(moshi);
         else if (type == Version.Logging.Client.File.class) return new Version.Logging.Client.File.Adapter();

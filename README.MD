@@ -43,6 +43,7 @@ Easier to use, however more limited than CMD.
 `gradlew -p GUI run`
 
 ## Supported versions:
+- [X] 1.19.2
 - [X] 1.12
 - [X] 1.8
 - [X] 1.7.10
@@ -75,13 +76,13 @@ Found an issue? Create a new GitHub issue.
 ## Dependencies:
 [Moshi 1.14.0](https://github.com/square/moshi)<br/>
 [Lombok 1.18.24](https://projectlombok.org/)<br/>
+JavaFX 18 (controls, fxml)<br/>
 
 ## Built with:
 [JetBrains IntelliJ Community Edition 2022.3 Beta](https://www.jetbrains.com/idea/)<br/>
 Java 18.0.1.1<br/>
 [Gradle 7.5.1](https://gradle.org/)<br/>
 [Lombok Gradle Plugin 6.5.1](https://plugins.gradle.org/plugin/io.freefair.lombok)<br/>
-JavaFX 18<br/>
 [JavaFX Plugin 0.0.13](https://plugins.gradle.org/plugin/org.openjfx.javafxplugin)<br/>
 
 ## License

@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slave.mcprd.json.AdapterFactory;
 import org.slave.mcprd.models.Assets;
 import org.slave.mcprd.models.Assets.Asset;
+import org.slave.mcprd.models.Rule;
 import org.slave.mcprd.models.Version;
 import org.slave.mcprd.models.VersionManifest;
 
@@ -45,6 +46,8 @@ public final class MCPRD {
 
     @SuppressWarnings("ConstantValue")
     public void download(final String mcpDir, final String mcVersion, final boolean ignoreMCP, final boolean dlJars, final boolean clientOnly, final boolean serverOnly, final boolean dlLibraries, final boolean dlNatives, final boolean linux, final boolean windows, final boolean w32, final boolean w64, final boolean osx, final boolean dlResources, final boolean overwrite) throws RuntimeException, IOException {
+        if (Constants.DEBUG) downloadFile(new URL(Constants.URL_VERSION_MANIFEST_V2), new File(".", "DEBUG.VERSION_MANIFEST.JSON"), true);
+
         VersionManifest versionManifest;
         try {
             System.out.println("Getting \"version_manifest_v2.json\"...");
@@ -76,6 +79,8 @@ public final class MCPRD {
 
         if (manifestVersion != null) {
             if (version == null || !mcVersion.equals(version.id())) {
+                if (Constants.DEBUG) downloadFile(new URL(manifestVersion.url()), new File(".", "DEBUG.MANIFEST_VERSION.JSON"), true);
+
                 System.out.println("Getting version JSON...");
                 try {
                     version = getVersion(manifestVersion);
@@ -581,13 +586,13 @@ public final class MCPRD {
     private boolean checkLibraryRules(final @NotNull Version.Library library) {
         boolean allow = true;//WTF - jinput has no rule
         if (library.rules() != null) {
-            for(Version.Library.Rule rule : library.rules()) {
-                if (rule.os() == null) {
+            for(Rule rule : library.rules()) {
+                if (rule.os() == null || rule.os().name() == null) {//Check for name being null may be incorrect...
                     allow = rule.action().value;
                 } else {//TODO nightly version is used for OSX exclusively
-                    boolean matchesOS = rule.os().name().startsWith(System.getProperty("os.name").toLowerCase());
+                    boolean matchesOS = rule.os().name().startsWith(Constants.OS_NAME.toLowerCase());
                     boolean matchesOSVersion = false;
-                    if (rule.os().version() != null) matchesOSVersion = Pattern.compile(rule.os().version()).matcher(System.getProperty("os.version")).matches();
+                    if (rule.os().version() != null) matchesOSVersion = Pattern.compile(rule.os().version()).matcher(Constants.OS_VERSION).matches();
                     if (matchesOS && matchesOSVersion) {
                         allow = rule.action().value;
                     }
