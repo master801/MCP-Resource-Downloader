@@ -9,23 +9,41 @@ Normal: `gradlew -p CMD run --args="{insert arguments here}"`<br/>
 Print out all Minecraft versions: `gradlew -p CMD run`<br/>
 
 ### Arguments:
-- `--mcp` [`MCP directory`] - The directory of where MCP is (**REQUIRED**)
-- `--mcVersion` [`Minecraft version`] - The version of Minecraft to download resources (**REQUIRED**)
-- `--jars` - If jar files should be downloaded (**NOT** required)
-- `--client` - If the client jar should be downloaded (**REQUIRED** if `--jars` used)
-- `--server` - If the server jar should be downloaded (**REQUIRED** if `--jars` used)
-- `--libraries` - If library jars should be downloaded (**NOT** required)
-- `--natives` - If natives should be downloaded and extracted (**NOT** required)
-- `--linux` - If Linux natives should be downloaded and extracted (**NOT** required even if `--natives` used)
-- `--windows` - If Windows natives should be downloaded and extracted (**NOT** required even if `--natives` used)
-- `--w32` - If Windows 32-bit natives should be downloaded and extracted (**NOT** required even if `--windows` used)
-- `--w64` - If Windows 64-bit natives should be downloaded and extracted (**NOT** required even if `--windows` used)
-- `--osx` - If OSX natives should be downloaded and extracted (**NOT** required even if `--natives` used)
-- `--resources` - If resources (sound, music) should be downloaded (**NOT** required)
-- `--overwrite` - If downloaded files should be overwritten should one already exist (**NOT** required)
+- `--mcp` [`MCP directory`]
+  - The directory of where MCP is (**REQUIRED**)
+- `--mcVersion` [`Minecraft version`]
+  - The version of Minecraft to download resources (**REQUIRED**)
+- `--jars`
+  - If jar files should be downloaded (**NOT** required)
+- `--client`
+  - If the client jar should be downloaded (**REQUIRED** if `--jars` used)
+- `--server`
+  - If the server jar should be downloaded (**REQUIRED** if `--jars` used)
+- `--libraries`
+  - If library jars should be downloaded (**NOT** required)
+- `--natives`
+  - If natives should be downloaded and extracted (**NOT** required)
+- `--linux`
+  - If Linux natives should be downloaded and extracted (**NOT** required even if `--natives` used)
+- `--windows`
+  - If Windows natives should be downloaded and extracted (**NOT** required even if `--natives` used)
+- `--w32`
+  - If Windows 32-bit natives should be downloaded and extracted (**NOT** required even if `--windows` used)
+- `--w64`
+  - If Windows 64-bit natives should be downloaded and extracted (**NOT** required even if `--windows` used)
+- `--osx`
+  - If OSX natives should be downloaded and extracted (**NOT** required even if `--natives` used)
+- `--resources`
+  - If resources (sound, music) should be downloaded (**NOT** required)
+- `--forge`
+  - Does extra things for Forge, specifically. 1.4.7 is only compatible at this time.
+- `--overwrite`
+  - If downloaded files should be overwritten should one already exist (**NOT** required)
 
-### Example:
+### Examples:
 `gradlew -p CMD run --args="--mcp mcp62 --mcVersion 1.2.5 --jars --client --libraries --natives --resources --overwrite"`<br/>
+
+`gradlew -p CMD run --args="--mcp forge-1.4.7-6.6.2.534-src/forge/mcp --mcVersion 1.4.7 --jars --client --server --libraries --natives --linux --windows --osx --resources --forge --overwrite"`
 
 `gradlew -p CMD run --args="--mcp mcp811 --mcVersion 1.6.4 --jars --client --libraries --natives --resources --overwrite"`<br/>
 
@@ -48,6 +66,7 @@ Easier to use, however more limited than CMD.
 - [X] 1.8
 - [X] 1.7.10
 - [X] 1.6.4
+- [X] 1.4.7 (Forge)
 - [X] 1.2.5
 - [X] 1.2.3
 
@@ -68,26 +87,26 @@ Found an issue? Create a new GitHub issue.
 - 1.6+
   - MCP can't decompile because it tries copying launcher files
     - Manually run the decompile script with
-    `runtime/bin/python/python_mcp runtime/decompile.py --nocopy --client` (Windows: `runtime\bin\python\python_mcp runtime\decompile.py --nocopy --client`)
+    `runtime/bin/python/python_mcp runtime/decompile.py --nocopy --client` (Windows: `runtime\bin\python\python_mcp.exe runtime\decompile.py --nocopy --client`)
     (in MCP directory) after running MCP-RD in client mode.
 - Mac OS (OSX) users may not have natives extracted
   - Manually extract jars files
 
 ## Dependencies:
-[Moshi 1.14.0](https://github.com/square/moshi)<br/>
-[Lombok 1.18.24](https://projectlombok.org/)<br/>
-JavaFX 18 (controls, fxml)<br/>
+[Moshi 1.15.1](https://github.com/square/moshi)<br/>
+[Lombok 1.18.34](https://projectlombok.org/)<br/>
+JavaFX 17 (controls, fxml)<br/>
 
 ## Built with:
-[JetBrains IntelliJ Community Edition 2022.3 Beta](https://www.jetbrains.com/idea/)<br/>
-Java 18.0.1.1<br/>
-[Gradle 7.5.1](https://gradle.org/)<br/>
-[Lombok Gradle Plugin 6.5.1](https://plugins.gradle.org/plugin/io.freefair.lombok)<br/>
-[JavaFX Plugin 0.0.13](https://plugins.gradle.org/plugin/org.openjfx.javafxplugin)<br/>
+[JetBrains IntelliJ Community Edition 2024.1.4](https://www.jetbrains.com/idea/)<br/>
+[Eclipse Temurin JDK 17.0.11.9](https://adoptium.net/temurin/releases/?version=17)<br/>
+[Gradle 8.9](https://gradle.org/)<br/>
+[Lombok Gradle Plugin 8.6](https://plugins.gradle.org/plugin/io.freefair.lombok)<br/>
+[JavaFX Plugin 0.1.0](https://plugins.gradle.org/plugin/org.openjfx.javafxplugin)<br/>
 
 ## License
 Do not steal or claim this code as yours.<br/>
 No derivative versions without releasing the source code.
 
 ---
-Copyright Master801 2022
+Copyright Master801 2022-2024

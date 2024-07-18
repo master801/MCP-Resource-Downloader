@@ -41,6 +41,7 @@
                   <Insets left="5.0" />
                </padding>
             </CheckBox>
+            <CheckBox fx:id="checkBoxForge" mnemonicParsing="false" text="%key.checkbox.forge" />
          </children>
          <padding>
             <Insets bottom="5.0" top="5.0" />

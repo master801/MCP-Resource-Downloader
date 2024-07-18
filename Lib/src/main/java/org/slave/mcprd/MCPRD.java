@@ -22,6 +22,9 @@ import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Iterator;
@@ -29,8 +32,10 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.jar.JarOutputStream;
 import java.util.regex.Pattern;
 
+@SuppressWarnings("RedundantStringFormatCall")
 public final class MCPRD {
 
     public final Moshi moshi;
@@ -38,14 +43,21 @@ public final class MCPRD {
     private VersionManifest versionManifest = null;
     private Version version = null;
 
+    private final MessageDigest messageDigestSHA1;
+
     public MCPRD() {
         moshi = new Moshi.Builder()
                 .add(new AdapterFactory())
                 .build();
+        try {
+            messageDigestSHA1 = MessageDigest.getInstance("SHA-1");
+        } catch(NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @SuppressWarnings("ConstantValue")
-    public void download(final String mcpDir, final String mcVersion, final boolean ignoreMCP, final boolean dlJars, final boolean clientOnly, final boolean serverOnly, final boolean dlLibraries, final boolean dlNatives, final boolean linux, final boolean windows, final boolean w32, final boolean w64, final boolean osx, final boolean dlResources, final boolean overwrite) throws RuntimeException, IOException {
+    public void download(final String mcpDir, final String mcVersion, final boolean ignoreMCP, final boolean dlJars, final boolean clientOnly, final boolean serverOnly, final boolean dlLibraries, final boolean dlNatives, final boolean linux, final boolean windows, final boolean w32, final boolean w64, final boolean osx, final boolean dlResources, final boolean forge, final boolean overwrite) throws RuntimeException, IOException {
         if (Constants.DEBUG) downloadFile(new URL(Constants.URL_VERSION_MANIFEST_V2), new File(".", "DEBUG.VERSION_MANIFEST.JSON"), true);
 
         VersionManifest versionManifest;
@@ -115,13 +127,13 @@ public final class MCPRD {
             case LEGACY -> dirNatives = new File(dirJarsVersionsID, String.format("%s-natives", version.id()));
             case NEWER -> {
                 dirNatives = new File(dirJarsVersionsID, String.format("%s-natives", version.id()));
-                System.out.println(String.format("Potentially unexpected version \"%s\"!", version.id()));
+                System.out.println(String.format("Potentially unexpected version \"%s\"!\n", version.id()));
             }
             default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!?", version.assets().assets));
         }
 
         if (dlJars) {
-            System.out.println("Downloading jar files...");
+            System.out.println("Downloading jar files...\n");
             switch(version.assets()) {
                 case PRE_1_6 -> {
                     if (!dirJarsBin.exists()) {
@@ -139,7 +151,7 @@ public final class MCPRD {
                 default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!", version.assets().assets));
             }
             downloadMinecraftJars(dirJars, dirJarsBin, dirJarsVersionsID, version, clientOnly, serverOnly, overwrite);
-            System.out.println("Done downloading jar files!\n");
+            System.out.println("Done downloading jar files!\n\n");
         }
         if (dlLibraries) {
             System.out.println("Downloading library files...");
@@ -167,11 +179,11 @@ public final class MCPRD {
             if (!dirNatives.exists()) {
                 if (!dirNatives.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirNatives.getPath()));
             }
-            downloadAndExtractNatives(dirNatives, version, linux, windows, w32, w64, osx, overwrite);
+            downloadAndExtractNatives(dirNatives, version, linux, windows, w32, w64, osx, forge, overwrite);
             System.out.println("Done downloading native files!\n");
         }
         if (dlResources) {
-            System.out.println("Downloading asset files...");
+            System.out.println("Downloading asset files...\n");
 
             Assets assets;
             try {
@@ -220,6 +232,108 @@ public final class MCPRD {
             downloadResources(dir, version, assets, overwrite);
             System.out.println("Done downloading asset files!\n");
         }
+
+        if (forge) {
+            System.out.println("Downloading Forge libs...");
+
+            File dirMCPLib = new File(dirMCP, "lib");
+            if (!dirMCPLib.exists()) {
+                if (dirMCPLib.mkdir()) System.out.println(String.format("Could not make directory \"%s\"!", dirMCPLib.getPath()));
+            }
+
+            if (dirMCPLib.exists()) {
+                List<String[]> libs = new ArrayList<>();
+                switch(version.id()) {
+                    case "1.4.7":
+                        libs.add(
+                                new String[] {
+                                        "https://repo1.maven.org/maven2/net/sourceforge/argo/argo/2.25/argo-2.25.jar",
+                                        "argo-2.25.jar"
+                                }
+                        );
+                        libs.add(
+                                new String[] {
+                                        "https://repository.ow2.org/nexus/content/repositories/releases/org/ow2/asm/asm-all/4.0/asm-all-4.0.jar",
+                                        "asm-all-4.0.jar"
+                                }
+                        );
+                        libs.add(
+                                new String[] {
+                                        "https://repository.ow2.org/nexus/content/repositories/releases/org/ow2/asm/asm-all/4.0/asm-all-4.0-sources.jar",
+                                        "asm-all-4.0-source.jar"
+                                }
+                        );
+                        libs.add(
+                                new String[] {
+                                        "https://repo1.maven.org/maven2/org/ow2/asm/asm-debug-all/4.0/asm-debug-all-4.0.jar",
+                                        "asm-debug-all-4.0.jar"
+                                }
+                        );
+                        libs.add(
+                                new String[] {
+                                        "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk15on/1.47/bcprov-jdk15on-1.47.jar",
+                                        "bcprov-jdk15on-147.jar"
+                                }
+                        );
+                        libs.add(
+                                new String[] {
+                                        "https://repo1.maven.org/maven2/com/google/guava/guava/12.0.1/guava-12.0.1.jar",
+                                        "guava-12.0.1.jar"
+                                }
+                        );
+                        libs.add(
+                                new String[] {
+                                        "https://repo1.maven.org/maven2/com/google/guava/guava/12.0.1/guava-12.0.1-sources.jar",
+                                        "guava-12.0.1-sources.jar"
+                                }
+                        );
+                        break;
+                    default:
+                        break;
+                }
+                for(String[] lib : libs) {
+                    downloadFile(
+                            new URL(lib[0]),
+                            new File(dirMCPLib, lib[1]),
+                            overwrite
+                    );
+                }
+            } else {
+                System.out.println(String.format("Directory \"%s\" does not exist?!", dirMCPLib.getPath()));
+            }
+
+            System.out.println("Done downloading libs\n");
+
+            System.out.println("Patching FML library hashes...");
+            switch(version.id()) {
+                case "1.4.7":
+                    File fileCoreFMLLibraries = new File(dirMCP, "../fml/common/cpw/mods/fml/relauncher/CoreFMLLibraries.java");
+                    if (fileCoreFMLLibraries.exists()) {
+                        //Replacing is way simpler than using Spoon
+                        String stringClass = Files.readString(fileCoreFMLLibraries.toPath());
+                        String ret = stringClass.replaceFirst("bb672829fde76cb163004752b86b0484bd0a7f4b", "e04c5335922c5e457f0a7cd62c93c4a7f699f829")//argo-2.25.jar
+                                .replaceFirst("b8e78b9af7bf45900e14c6f958486b6ca682195f", "e04c5335922c5e457f0a7cd62c93c4a7f699f829")//guava-12.0.1.jar
+                                .replaceFirst("98308890597acb64047f7e896638e0d98753ae82", "e04c5335922c5e457f0a7cd62c93c4a7f699f829")//asm-all-4.0.jar
+                                .replaceFirst("b6f5d9926b0afbde9f4dbe3db88c5247be7794bb", "e04c5335922c5e457f0a7cd62c93c4a7f699f829");//bcprov-jdk15on-147.jar
+                        if (!ret.equals(stringClass)) {
+                            Files.writeString(fileCoreFMLLibraries.toPath(), ret);
+                            System.out.println(
+                                    String.format("Patched file \"%s\"", fileCoreFMLLibraries.getPath())
+                            );
+                        } else {
+                            System.out.println(
+                                    String.format("Failed to patch file \"%s\"!", fileCoreFMLLibraries.getPath())
+                            );
+                        }
+                    } else {
+                        System.out.println(
+                                String.format("File \"%s\" does not exist!", fileCoreFMLLibraries)
+                        );
+                    }
+                    break;
+            }
+            System.out.println("Done patching\n");
+        }
     }
 
     /**
@@ -263,12 +377,12 @@ public final class MCPRD {
             } catch(IOException e) {
                 throw new RuntimeException("Failed to download client jar!", e);
             }
-            System.out.println("Done downloading client jar");
+            System.out.println(String.format("Downloaded client jar to \"%s\"\n", dest.getPath()));
             status += 1;
         }
         if (server) {
             try {
-                url = new URL(version.downloads().client().url());
+                url = new URL(version.downloads().server().url());
             } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
             }
@@ -279,15 +393,48 @@ public final class MCPRD {
             } catch(IOException e) {
                 throw new RuntimeException("Failed to download server jar!", e);
             }
-            System.out.println("Done downloading server jar");
+            System.out.println(String.format("Downloaded server jar to \"%s\"\n", dest.getPath()));
             status += 1;
         }
         if (status == 0) System.out.println("Didn't download any jar files?!");
     }
 
-    public void downloadAndExtractNatives(@NotNull File dirNatives, @NotNull final Version version, final boolean linux, final boolean windows, final boolean w32, final boolean w64, final boolean osx, final boolean overwrite) {
+    public void downloadAndExtractNatives(@NotNull File dirNatives, @NotNull final Version version, final boolean linux, final boolean windows, final boolean w32, final boolean w64, final boolean osx, final boolean forge, final boolean overwrite) {
         List<Version.Library> natives = downloadNatives(dirNatives, version, linux, windows, w32, w64, osx, overwrite);
         extractNatives(dirNatives, natives, linux, windows, w32, w64, osx, overwrite);
+
+        if (forge) {
+            List<String> jarFiles = new ArrayList<>();
+            switch(version.id()) {
+                case "1.4.7"://WTF Forge will error out if these do not exist
+                    jarFiles.add("windows_natives.jar");
+                    jarFiles.add("linux_natives.jar");
+                    jarFiles.add("macosx_natives.jar");
+                    break;
+            }
+            for(String jarFile : jarFiles) {
+                File fileJar = new File(dirNatives, jarFile);
+                try {
+                    FileOutputStream fileOutputStream = new FileOutputStream(fileJar);
+                    JarOutputStream jarOutputStream = new JarOutputStream(fileOutputStream);
+                    jarOutputStream.putNextEntry(
+                            new JarEntry("META-INF/DUMMY_JAR_FILE")
+                    );
+                    jarOutputStream.flush();
+                    jarOutputStream.close();
+                    fileOutputStream.flush();
+                    fileOutputStream.close();
+
+                    System.out.println(
+                            String.format("Created dummy jar file \"%s\"", fileJar.getPath())
+                    );
+                } catch(IOException e) {
+                    System.out.println(
+                            String.format("Failed to make dummy jar file \"%s\" due to IOException \"%s\"", jarFile, e)
+                    );
+                }
+            }
+        }
     }
 
     private List<Version.Library> downloadNatives(@NotNull File dirNatives, @NotNull final Version version, final boolean linux, final boolean windows, final boolean w32, final boolean w64, final boolean osx, final boolean overwrite) {
@@ -368,8 +515,12 @@ public final class MCPRD {
                     extractNative(dirNatives, _native, _native.downloads().classifiers().natives_windows_64(), overwrite);
                 }
             }
-            if (osx && _native.downloads().classifiers().natives_osx() != null) {
-                extractNative(dirNatives, _native, _native.downloads().classifiers().natives_osx(), overwrite);
+            if (osx) {
+                if (_native.downloads().classifiers().natives_osx() != null) {
+                    extractNative(dirNatives, _native, _native.downloads().classifiers().natives_osx(), overwrite);
+                } else if (_native.downloads().classifiers().natives_macos() != null) {
+                    extractNative(dirNatives, _native, _native.downloads().classifiers().natives_macos(), overwrite);
+                }
             }
         }
     }
@@ -398,6 +549,10 @@ public final class MCPRD {
                         break;
                     }
                 }
+            }
+            if (!exclude && jarEntry.getName().startsWith("META-INF")) {//Mojang being lazy and forgetting to exclude META-INF
+                System.out.println("Found bad jar exclusion!");
+                exclude = true;
             }
             if (exclude) {
                 System.out.println(String.format("Not extracting excluded entry \"%s\"...", jarEntry.getName()));
@@ -509,7 +664,7 @@ public final class MCPRD {
                 }
             }
             if (file == null) throw new NullPointerException(String.format("Failed to get path for asset file \"%s\"!", entry.getKey()));
-            downloadResource(file, entry.getValue(), overwrite);
+            downloadResource(file, entry.getValue(), overwrite);//TODO Check hash
         }
     }
 
@@ -543,13 +698,13 @@ public final class MCPRD {
         } catch (MalformedURLException e) {
             throw new RuntimeException(e);
         }
-        System.out.println(String.format("Downloading asset file \"%s\"...", fileAsset.getPath()));
+        System.out.println(String.format("Downloading asset file \"%s\"...", urlFile.getPath()));
         try {
             downloadFile(urlFile, fileAsset, overwrite);
         } catch(IOException e) {
             throw new RuntimeException(String.format("Failed to download asset file \"%s\"!", fileAsset.getName()), e);
         }
-        System.out.println("Done downloading asset file!\n");
+        System.out.println(String.format("Downloaded asset file to \"%s\"!\n", fileAsset.getPath()));
     }
 
     /**
@@ -598,8 +753,15 @@ public final class MCPRD {
                     }
                 }
             }
+        } else {
+            System.out.println(
+                    String.format(
+                            "Found no rules for library \"%s\"! This should not happen!",
+                            String.format("%s / %s", library.name().name(), library.name().version())
+                    )
+            );
         }
-        return allow;
+        return allow && !library.name().version().contains("nightly");//Never use nightly releases - MCP never used them
     }
 
     private String fetchJSON(final URL url) throws IOException {
@@ -621,7 +783,7 @@ public final class MCPRD {
                 System.out.println(String.format("File \"%s\" exists, but can't overwrite!", file.getPath()));
                 return;
             } else {
-                System.out.println(String.format("File \"%s\" exists, but overwriting...", file.getPath()));
+                System.out.println(String.format("File \"%s\" exists, but overwriting...\n", file.getPath()));
             }
         }
         try {
@@ -652,7 +814,7 @@ public final class MCPRD {
         }
         ReadableByteChannel readableByteChannel = Channels.newChannel(urlFile.openStream());
         try (FileOutputStream fos = new FileOutputStream(file)) {
-            fos.getChannel().transferFrom(readableByteChannel, 0, Long.MAX_VALUE);//Will ONLY transfer up to 16 MB... but that shouldn't be an issue...
+            fos.getChannel().transferFrom(readableByteChannel, 0, Long.MAX_VALUE);//Will ONLY transfer UP TO 16 MiB... but that shouldn't be an issue...
         }
     }
 

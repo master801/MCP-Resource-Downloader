@@ -45,6 +45,7 @@ public final class MCPRDController {
     public TextField textFieldMCP;
     public Button buttonMCP;
     public CheckBox checkBoxHidden;
+    public CheckBox checkBoxForge;
 
     public Button buttonDownload;
     public CheckBox checkBoxOverwrite;
@@ -157,8 +158,13 @@ public final class MCPRDController {
                         System.getProperty("os.arch").endsWith("64"),
                         osx,
                         checkBoxResources.selectedProperty().get(),
+                        checkBoxForge.selectedProperty().get(),
                         checkBoxOverwrite.selectedProperty().get()
                 );
+
+                Alert alert = new Alert(AlertType.INFORMATION);
+                alert.setHeaderText("Done!");
+                alert.showAndWait();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

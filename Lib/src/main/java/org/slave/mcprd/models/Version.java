@@ -711,7 +711,7 @@ public record Version(
 
             }
 
-            public record Classifiers(Library.Downloads.Artifact natives_linux, Library.Downloads.Artifact natives_osx, Library.Downloads.Artifact natives_windows, Library.Downloads.Artifact natives_windows_32, Library.Downloads.Artifact natives_windows_64, Library.Downloads.Artifact sources, Library.Downloads.Artifact javadoc) {
+            public record Classifiers(Library.Downloads.Artifact natives_linux, Library.Downloads.Artifact natives_osx, Library.Downloads.Artifact natives_macos, Library.Downloads.Artifact natives_windows, Library.Downloads.Artifact natives_windows_32, Library.Downloads.Artifact natives_windows_64, Library.Downloads.Artifact sources, Library.Downloads.Artifact javadoc) {
 
                 @RequiredArgsConstructor
                 public static final class Adapter extends JsonAdapter<Classifiers> {
@@ -720,7 +720,8 @@ public record Version(
 
                     @Override
                     public Classifiers fromJson(final JsonReader reader) throws IOException {
-                        Library.Downloads.Artifact natives_linux = null, natives_osx = null;
+                        Library.Downloads.Artifact natives_linux = null;
+                        Library.Downloads.Artifact natives_osx = null, natives_macos = null;
                         Library.Downloads.Artifact natives_windows = null, natives_windows_32 = null, natives_windows_64 = null;
                         Library.Downloads.Artifact sources = null, javadoc = null;
 
@@ -729,6 +730,7 @@ public record Version(
                             switch(reader.nextName()) {
                                 case "natives-linux" -> natives_linux = moshi.adapter(Library.Downloads.Artifact.class).fromJson(reader);
                                 case "natives-osx" -> natives_osx = moshi.adapter(Library.Downloads.Artifact.class).fromJson(reader);
+                                case "natives-macos" -> natives_macos = moshi.adapter(Library.Downloads.Artifact.class).fromJson(reader);//WTF
                                 case "natives-windows" -> natives_windows = moshi.adapter(Library.Downloads.Artifact.class).fromJson(reader);
                                 case "natives-windows-32" -> natives_windows_32 = moshi.adapter(Library.Downloads.Artifact.class).fromJson(reader);
                                 case "natives-windows-64" -> natives_windows_64 = moshi.adapter(Library.Downloads.Artifact.class).fromJson(reader);
@@ -737,7 +739,7 @@ public record Version(
                             }
                         }
                         reader.endObject();
-                        return new Classifiers(natives_linux, natives_osx, natives_windows, natives_windows_32, natives_windows_64, sources, javadoc);
+                        return new Classifiers(natives_linux, natives_osx, natives_macos, natives_windows, natives_windows_32, natives_windows_64, sources, javadoc);
                     }
 
                     @Override
@@ -756,6 +758,11 @@ public record Version(
                             writer.name("natives-osx");
                             moshi.adapter(Library.Downloads.Artifact.class)
                                     .toJson(writer, value.natives_osx());
+                        }
+                        if (value.natives_macos() != null) {
+                            writer.name("natives-macos");
+                            moshi.adapter(Library.Downloads.Artifact.class)
+                                    .toJson(writer, value.natives_macos());
                         }
 
                         if (value.natives_windows() != null) {

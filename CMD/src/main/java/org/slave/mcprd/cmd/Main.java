@@ -18,6 +18,7 @@ public final class Main {
         Boolean windows = null, w32 = null, w64 = null;
         Boolean osx = null;
         boolean overwrite = false;
+        boolean forge = false;
         for(int i = 0; i < args.length; i++) {
             String arg = args[i];
             if (arg.equals("--mcp")) mcpDir = args[++i];
@@ -43,6 +44,8 @@ public final class Main {
 
             //TODO Make --help command
             //TODO Make general cache directory with validation instead of redownloading every time
+
+            if (arg.equals("--forge")) forge = true;
 
             if (arg.equals("--overwrite")) overwrite = true;
         }
@@ -82,6 +85,8 @@ public final class Main {
                     osx,
 
                     resources,
+
+                    forge,
 
                     overwrite
             );
