@@ -171,7 +171,7 @@ public final class MCPRD {
                 }
                 default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!", version.assets().assets));
             }
-            downloadLibraries(dir, version, overwrite, linux, windows, osx);
+            downloadLibraries(dir, version, linux, windows, osx, overwrite);
             System.out.println("Done downloading library files!\n");
         }
         if (dlNatives) {
