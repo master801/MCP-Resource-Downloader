@@ -36,7 +36,7 @@ Print out all Minecraft versions: `gradlew -p CMD run`<br/>
 - `--resources`
   - If resources (sound, music) should be downloaded (**NOT** required)
 - `--forge`
-  - Does extra things for Forge, specifically. 1.4.7 is only compatible at this time.
+  - Does extra things for Forge, specifically. `1.4.7` and `1.5.2` are the only compatible versions at this time.
 - `--overwrite`
   - If downloaded files should be overwritten should one already exist (**NOT** required)
 
@@ -66,9 +66,10 @@ Easier to use, however more limited than CMD.
 - [X] 1.8
 - [X] 1.7.10
 - [X] 1.6.4
+- [X] 1.5.2 (Forge)
 - [X] 1.4.7 (Forge)
-- [X] 1.2.5
-- [X] 1.2.3
+- [X] 1.2.5 (Forge)
+- [X] 1.2.3 (Forge)
 
 ## Known Issues:
 - Server jar can't decompile

@@ -59,7 +59,7 @@
                         <Insets right="5.0" />
                      </HBox.margin>
                   </Button>
-                  <CheckBox fx:id="checkBoxOverwrite" mnemonicParsing="false" selected="true" text="%key.checkbox.overwrite">
+                  <CheckBox fx:id="checkBoxOverwrite" mnemonicParsing="false" text="%key.checkbox.overwrite">
                      <HBox.margin>
                         <Insets left="5.0" />
                      </HBox.margin>

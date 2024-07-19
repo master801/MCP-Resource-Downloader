@@ -27,8 +27,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -155,6 +157,7 @@ public final class MCPRD {
         }
         if (dlLibraries) {
             System.out.println("Downloading library files...");
+
             File dir;
             switch(version.assets()) {
                 case PRE_1_6 -> {
@@ -172,6 +175,7 @@ public final class MCPRD {
                 default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!", version.assets().assets));
             }
             downloadLibraries(dir, version, linux, windows, osx, overwrite);
+
             System.out.println("Done downloading library files!\n");
         }
         if (dlNatives) {
@@ -235,104 +239,18 @@ public final class MCPRD {
 
         if (forge) {
             System.out.println("Downloading Forge libs...");
-
-            File dirMCPLib = new File(dirMCP, "lib");
-            if (!dirMCPLib.exists()) {
-                if (dirMCPLib.mkdir()) System.out.println(String.format("Could not make directory \"%s\"!", dirMCPLib.getPath()));
-            }
-
-            if (dirMCPLib.exists()) {
-                List<String[]> libs = new ArrayList<>();
-                switch(version.id()) {
-                    case "1.4.7":
-                        libs.add(
-                                new String[] {
-                                        "https://repo1.maven.org/maven2/net/sourceforge/argo/argo/2.25/argo-2.25.jar",
-                                        "argo-2.25.jar"
-                                }
-                        );
-                        libs.add(
-                                new String[] {
-                                        "https://repository.ow2.org/nexus/content/repositories/releases/org/ow2/asm/asm-all/4.0/asm-all-4.0.jar",
-                                        "asm-all-4.0.jar"
-                                }
-                        );
-                        libs.add(
-                                new String[] {
-                                        "https://repository.ow2.org/nexus/content/repositories/releases/org/ow2/asm/asm-all/4.0/asm-all-4.0-sources.jar",
-                                        "asm-all-4.0-source.jar"
-                                }
-                        );
-                        libs.add(
-                                new String[] {
-                                        "https://repo1.maven.org/maven2/org/ow2/asm/asm-debug-all/4.0/asm-debug-all-4.0.jar",
-                                        "asm-debug-all-4.0.jar"
-                                }
-                        );
-                        libs.add(
-                                new String[] {
-                                        "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk15on/1.47/bcprov-jdk15on-1.47.jar",
-                                        "bcprov-jdk15on-147.jar"
-                                }
-                        );
-                        libs.add(
-                                new String[] {
-                                        "https://repo1.maven.org/maven2/com/google/guava/guava/12.0.1/guava-12.0.1.jar",
-                                        "guava-12.0.1.jar"
-                                }
-                        );
-                        libs.add(
-                                new String[] {
-                                        "https://repo1.maven.org/maven2/com/google/guava/guava/12.0.1/guava-12.0.1-sources.jar",
-                                        "guava-12.0.1-sources.jar"
-                                }
-                        );
-                        break;
-                    default:
-                        break;
-                }
-                for(String[] lib : libs) {
-                    downloadFile(
-                            new URL(lib[0]),
-                            new File(dirMCPLib, lib[1]),
-                            overwrite
-                    );
-                }
+            if (downloadForgeLibs(dirJars, dirMCP, overwrite)) {
+                System.out.println("Done downloading Forge libs\n");
             } else {
-                System.out.println(String.format("Directory \"%s\" does not exist?!", dirMCPLib.getPath()));
+                System.out.println("Failed to download Forge libs!\n");
             }
-
-            System.out.println("Done downloading libs\n");
 
             System.out.println("Patching FML library hashes...");
-            switch(version.id()) {
-                case "1.4.7":
-                    File fileCoreFMLLibraries = new File(dirMCP, "../fml/common/cpw/mods/fml/relauncher/CoreFMLLibraries.java");
-                    if (fileCoreFMLLibraries.exists()) {
-                        //Replacing is way simpler than using Spoon
-                        String stringClass = Files.readString(fileCoreFMLLibraries.toPath());
-                        String ret = stringClass.replaceFirst("bb672829fde76cb163004752b86b0484bd0a7f4b", "e04c5335922c5e457f0a7cd62c93c4a7f699f829")//argo-2.25.jar
-                                .replaceFirst("b8e78b9af7bf45900e14c6f958486b6ca682195f", "e04c5335922c5e457f0a7cd62c93c4a7f699f829")//guava-12.0.1.jar
-                                .replaceFirst("98308890597acb64047f7e896638e0d98753ae82", "e04c5335922c5e457f0a7cd62c93c4a7f699f829")//asm-all-4.0.jar
-                                .replaceFirst("b6f5d9926b0afbde9f4dbe3db88c5247be7794bb", "e04c5335922c5e457f0a7cd62c93c4a7f699f829");//bcprov-jdk15on-147.jar
-                        if (!ret.equals(stringClass)) {
-                            Files.writeString(fileCoreFMLLibraries.toPath(), ret);
-                            System.out.println(
-                                    String.format("Patched file \"%s\"", fileCoreFMLLibraries.getPath())
-                            );
-                        } else {
-                            System.out.println(
-                                    String.format("Failed to patch file \"%s\"!", fileCoreFMLLibraries.getPath())
-                            );
-                        }
-                    } else {
-                        System.out.println(
-                                String.format("File \"%s\" does not exist!", fileCoreFMLLibraries)
-                        );
-                    }
-                    break;
+            if (patchFMLHashes(dirMCP)) {
+                System.out.println("Done patching FML library hashes!\n");
+            } else {
+                System.out.println("Failed to patch FML library hashes!\n");
             }
-            System.out.println("Done patching\n");
         }
     }
 
@@ -381,20 +299,27 @@ public final class MCPRD {
             status += 1;
         }
         if (server) {
-            try {
-                url = new URL(version.downloads().server().url());
-            } catch (MalformedURLException e) {
-                throw new RuntimeException(e);
+            if (version.downloads().server() != null && version.downloads().server().url() != null) {
+                try {
+                    url = new URL(version.downloads().server().url());
+                } catch (MalformedURLException e) {
+                    throw new RuntimeException(e);
+                }
+                dest = new File(dirJars, "minecraft_server.jar");
+                System.out.println("Downloading server jar...");
+                try {
+                    downloadFile(url, dest, overwrite);
+                } catch(IOException e) {
+                    throw new RuntimeException("Failed to download server jar!", e);
+                }
+                System.out.println(
+                        String.format("Downloaded server jar to \"%s\"\n", dest.getPath())
+                );
+                status += 1;
+            } else {
+                System.out.println("No server jar specified in version manifest!");
+                System.out.println("Not downloading...\n");
             }
-            dest = new File(dirJars, "minecraft_server.jar");
-            System.out.println("Downloading server jar...");
-            try {
-                downloadFile(url, dest, overwrite);
-            } catch(IOException e) {
-                throw new RuntimeException("Failed to download server jar!", e);
-            }
-            System.out.println(String.format("Downloaded server jar to \"%s\"\n", dest.getPath()));
-            status += 1;
         }
         if (status == 0) System.out.println("Didn't download any jar files?!");
     }
@@ -406,11 +331,11 @@ public final class MCPRD {
         if (forge) {
             List<String> jarFiles = new ArrayList<>();
             switch(version.id()) {
-                case "1.4.7"://WTF Forge will error out if these do not exist
+                case "1.4.7", "1.5.2" -> {//WTF Forge will error out if these do not exist
                     jarFiles.add("windows_natives.jar");
                     jarFiles.add("linux_natives.jar");
                     jarFiles.add("macosx_natives.jar");
-                    break;
+                }
             }
             for(String jarFile : jarFiles) {
                 File fileJar = new File(dirNatives, jarFile);
@@ -443,7 +368,9 @@ public final class MCPRD {
         for(Version.Library library : version.libraries()) {
             if (library.natives() == null) continue;
             if (!checkLibraryRules(library)) {
-                System.out.println(String.format("Disallowed native \"%s\"", library.name()));
+                System.out.println(
+                        String.format("Disallowed native \"%s\"", library.name())
+                );
             } else {
                 natives.add(library);
             }
@@ -459,7 +386,9 @@ public final class MCPRD {
                 Version.Library library = iterator.next();
                 if (!osx && library.name().name().equals("lwjgl-platform") && library.isNightly()) {//OSX prefers nightly, but Windows does not (if more than 1 LWJGL)
                     iterator.remove();
-                    System.out.println(String.format("Disallowing nightly native \"%s\"", Constants.Maven.to(library.name())));
+                    System.out.println(
+                            String.format("Disallowing nightly native \"%s\"", Constants.Maven.to(library.name()))
+                    );
                     break;
                 }
             }
@@ -497,7 +426,10 @@ public final class MCPRD {
         try {
             downloadFile(url, fileNative, overwrite);
         } catch(IOException e) {
-            throw new RuntimeException(String.format("Failed to download native \"%s\"!", fileNative), e);
+            throw new RuntimeException(
+                    String.format("Failed to download native \"%s\"!", fileNative),
+                    e
+            );
         }
     }
 
@@ -529,7 +461,9 @@ public final class MCPRD {
         File nativeFile = new File(dirNatives, nativeArtifact.path().substring(nativeArtifact.path().lastIndexOf('/')));
         if (!nativeFile.exists()) throw new RuntimeException(new FileNotFoundException(String.format("Could not find downloaded native \"%s\"", nativeFile.getPath())));
 
-        System.out.println(String.format("Extracting native jar \"%s\" to \"%s\"", nativeFile.getName(), dirNatives.getPath()));
+        System.out.println(
+                String.format("Extracting native jar \"%s\" to \"%s\"", nativeFile.getName(), dirNatives.getPath())
+        );
 
         JarFile nativeJar;
         try {
@@ -555,7 +489,9 @@ public final class MCPRD {
                 exclude = true;
             }
             if (exclude) {
-                System.out.println(String.format("Not extracting excluded entry \"%s\"...", jarEntry.getName()));
+                System.out.println(
+                        String.format("Not extracting excluded entry \"%s\"...", jarEntry.getName())
+                );
                 continue;
             }
 
@@ -571,22 +507,21 @@ public final class MCPRD {
                 if (!extractFile.getParentFile().mkdirs()) throw new RuntimeException(String.format("Failed to create file directory \"%s\"!", extractFile.getParentFile().getPath()));
             }
             if (extractFile.exists() && !overwrite) {
-                System.out.println(String.format("Native \"%s\" already exists. Skipping...", extractFile.getPath()));
+                System.out.println(
+                        String.format("Native \"%s\" already exists. Skipping...", extractFile.getPath())
+                );
                 continue;
             }
 
-            FileOutputStream fileOutputStream;
-            try {
-                fileOutputStream = new FileOutputStream(extractFile);
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-            try {
+            try(FileOutputStream fileOutputStream = new FileOutputStream(extractFile)) {
                 fileOutputStream.getChannel().transferFrom(Channels.newChannel(inputStream), 0, Long.MAX_VALUE);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            System.out.println(String.format("Extracted native \"%s\"", extractFile.getPath()));
+
+            System.out.println(
+                    String.format("Extracted native \"%s\"", extractFile.getPath())
+            );
         }
 
         try {
@@ -605,12 +540,16 @@ public final class MCPRD {
             if (checkLibraryRules(library)) {
                 toDownload.add(library);
             } else {
-                System.out.println(String.format("Disallowed library \"%s\" for this OS", library.name()));
+                System.out.println(
+                        String.format("Disallowed library \"%s\" for this OS", library.name())
+                );
             }
         }
 
         for(Version.Library library : toDownload) {
-            System.out.println(String.format("Downloading library \"%s\"...", library.name()));
+            System.out.println(
+                    String.format("Downloading library \"%s\"...", library.name())
+            );
 
             File fileLibrary;
             switch(version.assets()) {
@@ -640,8 +579,26 @@ public final class MCPRD {
                 throw new RuntimeException(String.format("Failed to download library \"%s\"!\n", library.name()), e);
             }
 
-            System.out.println(String.format("Done downloading library \"%s\"!\n", library.name()));
+            System.out.println(
+                    String.format("Done downloading library \"%s\"!\n", library.name())
+            );
         }
+    }
+
+    private Assets getAssets(@NotNull final Version version) throws IOException {
+        URL url;
+        try {
+            url = new URL(version.assetIndex().url());
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
+
+        String fetchedJSON = fetchJSON(url);
+        if (!fetchedJSON.isEmpty()) {
+            return moshi.adapter(Assets.class)
+                    .fromJson(fetchedJSON);
+        }
+        throw new NullPointerException("Failed to parse JSON!");
     }
 
     @SuppressWarnings("ConstantValue")
@@ -668,26 +625,12 @@ public final class MCPRD {
         }
     }
 
-    private Assets getAssets(@NotNull final Version version) throws IOException {
-        URL url;
-        try {
-            url = new URL(version.assetIndex().url());
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
-
-        String fetchedJSON = fetchJSON(url);
-        if (!fetchedJSON.isEmpty()) {
-            return moshi.adapter(Assets.class)
-                    .fromJson(fetchedJSON);
-        }
-        throw new NullPointerException("Failed to parse JSON!");
-    }
-
     private void downloadResource(@NotNull final File fileAsset, @NotNull final Assets.Asset asset, final boolean overwrite) {
         if (fileAsset.exists()) {
             if (!overwrite) {
-                System.out.println(String.format("Asset \"%s\" already exists and can't overwrite", fileAsset.getPath()));
+                System.out.println(
+                        String.format("Asset \"%s\" already exists and can't overwrite", fileAsset.getPath())
+                );
                 return;
             }
         }
@@ -698,13 +641,294 @@ public final class MCPRD {
         } catch (MalformedURLException e) {
             throw new RuntimeException(e);
         }
-        System.out.println(String.format("Downloading asset file \"%s\"...", urlFile.getPath()));
+        System.out.println(
+                String.format("Downloading asset file \"%s\"...", urlFile.getPath())
+        );
         try {
             downloadFile(urlFile, fileAsset, overwrite);
         } catch(IOException e) {
             throw new RuntimeException(String.format("Failed to download asset file \"%s\"!", fileAsset.getName()), e);
         }
-        System.out.println(String.format("Downloaded asset file to \"%s\"!\n", fileAsset.getPath()));
+        System.out.println(
+                String.format("Downloaded asset file to \"%s\"!\n", fileAsset.getPath())
+        );
+    }
+
+    public boolean downloadForgeLibs(final File dirJars, final File dirMCP, final boolean overwrite) {
+        File dirMCPLib = new File(dirMCP, "lib");
+        if (!dirMCPLib.exists()) {
+            if (dirMCPLib.mkdir()) System.out.println(String.format("Could not make directory \"%s\"!", dirMCPLib.getPath()));
+        }
+
+        if (dirMCPLib.exists()) {
+            List<String[]> libs = new ArrayList<>();// mcp/lib
+            List<String[]> jarLibs = new ArrayList<>();// mcp/jars/lib (1.5.2+)
+            switch(version.id()) {
+                //Download lib files from Maven
+                //These are the most up-to-date versions (hotfixed CVEs)
+                case "1.4.7" -> {
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/net/sourceforge/argo/argo/2.25/argo-2.25.jar",
+                                    "argo-2.25.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repository.ow2.org/nexus/content/repositories/releases/org/ow2/asm/asm-all/4.0/asm-all-4.0.jar",
+                                    "asm-all-4.0.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repository.ow2.org/nexus/content/repositories/releases/org/ow2/asm/asm-all/4.0/asm-all-4.0-sources.jar",
+                                    "asm-all-4.0-source.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/ow2/asm/asm-debug-all/4.0/asm-debug-all-4.0.jar",
+                                    "asm-debug-all-4.0.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk15on/1.47/bcprov-jdk15on-1.47.jar",
+                                    "bcprov-jdk15on-147.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/com/google/guava/guava/12.0.1/guava-12.0.1.jar",
+                                    "guava-12.0.1.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/com/google/guava/guava/12.0.1/guava-12.0.1-sources.jar",
+                                    "guava-12.0.1-sources.jar"
+                            }
+                    );
+
+                    jarLibs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/net/sourceforge/argo/argo/2.25/argo-2.25.jar",
+                                    "argo-2.25.jar"
+                            }
+                    );
+                    jarLibs.add(
+                            new String[] {
+                                    "https://repository.ow2.org/nexus/content/repositories/releases/org/ow2/asm/asm-all/4.0/asm-all-4.0.jar",
+                                    "asm-all-4.0.jar"
+                            }
+                    );
+                    jarLibs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk15on/1.47/bcprov-jdk15on-1.47.jar",
+                                    "bcprov-jdk15on-147.jar"
+                            }
+                    );
+                    jarLibs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/com/google/guava/guava/12.0.1/guava-12.0.1.jar",
+                                    "guava-12.0.1.jar"
+                            }
+                    );
+                }
+                case "1.5.2" -> {
+                    libs.add(
+                            new String[] {
+//                                        "https://repo1.maven.org/maven2/net/sourceforge/argo/argo/3.2/argo-3.2-sources.jar",
+                                    "https://repo1.maven.org/maven2/net/sourceforge/argo/argo/3.2/argo-3.2.jar",//WTF
+                                    "argo-3.2-src.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/com/google/guava/guava/14.0-rc3/guava-14.0-rc3.jar",
+                                    "guava-14.0-rc3.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/ow2/asm/asm-debug-all/4.1/asm-debug-all-4.1.jar",
+                                    "asm-debug-all-4.1.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk15on/1.48/bcprov-jdk15on-1.48.jar",
+                                    "bcprov-debug-jdk15on-148.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk15on/1.48/bcprov-jdk15on-1.48-sources.jar",
+                                    "bcprov-jdk15on-148-src.zip"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/com/google/guava/guava/14.0-rc3/guava-14.0-rc3-sources.jar",
+                                    "guava-14.0-rc3-sources.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.10.0/scala-library-2.10.0.jar",
+                                    "scala-library.jar"
+                            }
+                    );
+
+                    jarLibs.add(
+                            new String[] {
+                                    "https://master.dl.sourceforge.net/project/argo/argo/3.2/argo-small-3.2.jar?viasf=1",
+                                    "argo-small-3.2.jar"
+                            }
+                    );
+                    jarLibs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/com/google/guava/guava/14.0-rc3/guava-14.0-rc3.jar",
+                                    "guava-14.0-rc3.jar"
+                            }
+                    );
+                    jarLibs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/ow2/asm/asm-all/4.1/asm-all-4.1.jar",
+                                    "asm-all-4.1.jar"
+                            }
+                    );
+                    jarLibs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk15on/1.48/bcprov-jdk15on-1.48.jar",
+                                    "bcprov-jdk15on-148.jar"
+                            }
+                    );
+                    jarLibs.add(
+                            new String[] {
+//                                        https://web.archive.org/web/20140213182129/http://files.minecraftforge.net/fmllibs/
+                                    "https://web.archive.org/web/20140626042316if_/http://files.minecraftforge.net/fmllibs/deobfuscation_data_1.5.2.zip",
+                                    "deobfuscation_data_1.5.2.zip"
+                            }
+                    );
+                    jarLibs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.10.0/scala-library-2.10.0.jar",
+                                    "scala-library.jar"
+                            }
+                    );
+
+                    //WTF
+                    try {
+                        downloadFile(
+                                new URL("https://repo1.maven.org/maven2/org/ow2/asm/asm/4.1/asm-4.1.jar"),
+                                new File(dirMCPLib, "asm-4.1.tar.gz"),
+                                overwrite
+                        );
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+
+            int downloaded = 0;
+            for(String[] lib : libs) {
+                try {
+                    downloadFile(
+                            new URL(lib[0]),
+                            new File(dirMCPLib, lib[1]),
+                            overwrite
+                    );
+                    downloaded++;
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            int downloaded2 = 0;
+            if (!jarLibs.isEmpty()) {
+                File dirJarsLib = new File(dirJars, "lib");
+                if(!dirJarsLib.exists()) dirJarsLib.mkdir();
+
+                for(String[] jarLib : jarLibs) {
+                    try {
+                        downloadFile(
+                                new URL(jarLib[0]),
+                                new File(dirJarsLib, jarLib[1]),
+                                overwrite
+                        );
+                        downloaded2++;
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+
+            return downloaded == libs.size() && downloaded2 == jarLibs.size();
+        } else {
+            System.out.println(
+                    String.format("Directory \"%s\" does not exist?!", dirMCPLib.getPath())
+            );
+        }
+        return false;
+    }
+
+    public boolean patchFMLHashes(final File dirMCP) {
+        File fileCoreFMLLibraries = new File(dirMCP, "../fml/common/cpw/mods/fml/relauncher/CoreFMLLibraries.java");
+        if (fileCoreFMLLibraries.exists()) {
+            Map<String, String> mapUpdatedHashes = new HashMap<>();
+            switch(version.id()) {
+                case "1.4.7" -> {
+//                        mapUpdatedHashes.put("bb672829fde76cb163004752b86b0484bd0a7f4b", "bb672829fde76cb163004752b86b0484bd0a7f4b");//argo-2.25.jar
+//                        mapUpdatedHashes.put("b8e78b9af7bf45900e14c6f958486b6ca682195f", "b8e78b9af7bf45900e14c6f958486b6ca682195f");//guava-12.0.1.jar
+                    mapUpdatedHashes.put("98308890597acb64047f7e896638e0d98753ae82", "2518725354c7a6a491a323249b9e86846b00df09");//asm-all-4.0.jar
+//                        mapUpdatedHashes.put("b6f5d9926b0afbde9f4dbe3db88c5247be7794bb", "b6f5d9926b0afbde9f4dbe3db88c5247be7794bb");//bcprov-jdk15on-147.jar
+                }
+                case "1.5.2" -> {
+//                        mapUpdatedHashes.put("58912ea2858d168c50781f956fa5b59f0f7c6b51", "58912ea2858d168c50781f956fa5b59f0f7c6b51");//argo-small-3.2.jar
+//                        mapUpdatedHashes.put("931ae21fa8014c3ce686aaa621eae565fefb1a6a", "931ae21fa8014c3ce686aaa621eae565fefb1a6a");//guava-14.0-rc3.jar
+                    mapUpdatedHashes.put("054986e962b88d8660ae4566475658469595ef58", "ad568238ee36a820bd6c6806807e8a14ea34684d");//asm-all-4.1.jar
+//                        mapUpdatedHashes.put("960dea7c9181ba0b17e8bab0c06a43f0a5f04e65", "960dea7c9181ba0b17e8bab0c06a43f0a5f04e65");//bcprov-jdk15on-148.jar
+                    mapUpdatedHashes.put("458d046151ad179c85429ed7420ffb1eaf6ddf85", "43c6d98b445187c6b459a582c774ffb025120ef4");//scala-library.jar (2.10)
+                }
+            }
+
+            if (!mapUpdatedHashes.isEmpty()) {
+                //Replacing is way simpler than using Spoon
+                String stringClass;
+                try {
+                    stringClass = Files.readString(fileCoreFMLLibraries.toPath());
+                } catch(IOException e) {
+                    System.out.println(
+                            String.format("Failed to read file \"%s\" due to IOException!", fileCoreFMLLibraries.getPath())
+                    );
+                    throw new RuntimeException(e);
+                }
+
+                String ret = stringClass;
+                for(String key : mapUpdatedHashes.keySet()) ret = ret.replaceFirst(key, mapUpdatedHashes.get(key));
+                if (!ret.equals(stringClass)) {
+                    try {
+                        Files.writeString(fileCoreFMLLibraries.toPath(), ret);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    System.out.println(
+                            String.format("Patched file \"%s\"", fileCoreFMLLibraries.getPath())
+                    );
+                    return true;
+                } else {
+                    System.out.println(
+                            String.format("Failed to patch file \"%s\"!", fileCoreFMLLibraries.getPath())
+                    );
+                }
+            }
+        } else {
+            System.out.println(
+                    String.format("File \"%s\" does not exist!", fileCoreFMLLibraries)
+            );
+        }
+        return false;
     }
 
     /**
@@ -761,7 +985,7 @@ public final class MCPRD {
                     )
             );
         }
-        return allow && !library.name().version().contains("nightly");//Never use nightly releases - MCP never used them
+        return allow && (!library.name().version().contains("nightly"));//Never use nightly releases - MCP never used them
     }
 
     private String fetchJSON(final URL url) throws IOException {
