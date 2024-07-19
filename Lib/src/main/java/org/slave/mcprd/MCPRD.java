@@ -246,7 +246,7 @@ public final class MCPRD {
             }
 
             System.out.println("Patching FML library hashes...");
-            if (patchFMLHashes(dirMCP)) {
+            if (patchFMLHashes(version, dirMCP)) {
                 System.out.println("Done patching FML library hashes!\n");
             } else {
                 System.out.println("Failed to patch FML library hashes!\n");
@@ -662,10 +662,61 @@ public final class MCPRD {
 
         if (dirMCPLib.exists()) {
             List<String[]> libs = new ArrayList<>();// mcp/lib
-            List<String[]> jarLibs = new ArrayList<>();// mcp/jars/lib (1.5.2+)
+            List<String[]> jarLibs = new ArrayList<>();// mcp/jars/lib (1.3.2+)
             switch(version.id()) {
                 //Download lib files from Maven
                 //These are the most up-to-date versions (hotfixed CVEs)
+                case "1.3.2" -> {
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/net/sourceforge/argo/argo/2.25/argo-2.25.jar",
+                                    "argo-2.25.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/ow2/asm/asm-all/4.0/asm-all-4.0.jar",
+                                    "asm-all-4.0.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/ow2/asm/asm-all/4.0/asm-all-4.0-sources.jar",
+                                    "asm-all-4.0-source.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/com/google/guava/guava/12.0.1/guava-12.0.1.jar",
+                                    "guava-12.0.1.jar"
+                            }
+                    );
+                    libs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/com/google/guava/guava/12.0.1/guava-12.0.1-sources.jar",
+                                    "guava-12.0.1-sources.jar"
+                            }
+                    );
+
+                    jarLibs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/org/ow2/asm/asm-all/4.0/asm-all-4.0.jar",
+                                    "asm-all-4.0.jar"
+                            }
+                    );
+                    jarLibs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/net/sourceforge/argo/argo/2.25/argo-2.25.jar",
+                                    "argo-2.25.jar"
+                            }
+                    );
+                    jarLibs.add(
+                            new String[] {
+                                    "https://repo1.maven.org/maven2/com/google/guava/guava/12.0.1/guava-12.0.1.jar",
+                                    "guava-12.0.1.jar"
+                            }
+                    );
+                }
                 case "1.4.7" -> {
                     libs.add(
                             new String[] {
@@ -675,13 +726,13 @@ public final class MCPRD {
                     );
                     libs.add(
                             new String[] {
-                                    "https://repository.ow2.org/nexus/content/repositories/releases/org/ow2/asm/asm-all/4.0/asm-all-4.0.jar",
+                                    "https://repo1.maven.org/maven2/org/ow2/asm/asm-all/4.0/asm-all-4.0.jar",
                                     "asm-all-4.0.jar"
                             }
                     );
                     libs.add(
                             new String[] {
-                                    "https://repository.ow2.org/nexus/content/repositories/releases/org/ow2/asm/asm-all/4.0/asm-all-4.0-sources.jar",
+                                    "https://repo1.maven.org/maven2/org/ow2/asm/asm-all/4.0/asm-all-4.0-sources.jar",
                                     "asm-all-4.0-source.jar"
                             }
                     );
@@ -718,7 +769,7 @@ public final class MCPRD {
                     );
                     jarLibs.add(
                             new String[] {
-                                    "https://repository.ow2.org/nexus/content/repositories/releases/org/ow2/asm/asm-all/4.0/asm-all-4.0.jar",
+                                    "https://repo1.maven.org/maven2/org/ow2/asm/asm-all/4.0/asm-all-4.0.jar",
                                     "asm-all-4.0.jar"
                             }
                     );
@@ -873,11 +924,21 @@ public final class MCPRD {
         return false;
     }
 
-    public boolean patchFMLHashes(final File dirMCP) {
-        File fileCoreFMLLibraries = new File(dirMCP, "../fml/common/cpw/mods/fml/relauncher/CoreFMLLibraries.java");
+    public boolean patchFMLHashes(final Version version, final File dirMCP) {
+        File fileCoreFMLLibraries;
+        switch(version.id()) {
+            case "1.3.2" -> fileCoreFMLLibraries = new File(dirMCP, "forge/fml/common/cpw/mods/fml/relauncher/CoreFMLLibraries.java");//Still using 1.2.5 MCP style...
+            default -> fileCoreFMLLibraries = new File(dirMCP, "../fml/common/cpw/mods/fml/relauncher/CoreFMLLibraries.java");
+        }
+
         if (fileCoreFMLLibraries.exists()) {
             Map<String, String> mapUpdatedHashes = new HashMap<>();
             switch(version.id()) {
+                case "1.3.2" -> {
+//                    mapUpdatedHashes.put("bb672829fde76cb163004752b86b0484bd0a7f4b", "bb672829fde76cb163004752b86b0484bd0a7f4b");//argo-2.25.jar
+//                    mapUpdatedHashes.put("b8e78b9af7bf45900e14c6f958486b6ca682195f", "b8e78b9af7bf45900e14c6f958486b6ca682195f");//guava-12.0.1.jar
+                    mapUpdatedHashes.put("98308890597acb64047f7e896638e0d98753ae82", "2518725354c7a6a491a323249b9e86846b00df09");//asm-all-4.0.jar
+                }
                 case "1.4.7" -> {
 //                        mapUpdatedHashes.put("bb672829fde76cb163004752b86b0484bd0a7f4b", "bb672829fde76cb163004752b86b0484bd0a7f4b");//argo-2.25.jar
 //                        mapUpdatedHashes.put("b8e78b9af7bf45900e14c6f958486b6ca682195f", "b8e78b9af7bf45900e14c6f958486b6ca682195f");//guava-12.0.1.jar
