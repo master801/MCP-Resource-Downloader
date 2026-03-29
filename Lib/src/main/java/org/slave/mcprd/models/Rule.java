@@ -44,15 +44,13 @@ public record Rule(@NotNull Rule.Action action, @Nullable OS os, @Nullable Map<S
             }
             reader.endObject();
 
-            if (action == null) {
-                throw new RuntimeException("Failed to serialize \"rule\"!");
-            }
+            if (action == null) throw new RuntimeException("Failed to serialize \"rule\"!");
 
-            return new org.slave.mcprd.models.Rule(action, os, features);
+            return new Rule(action, os, features);
         }
 
         @Override
-        public void toJson(final JsonWriter writer, final org.slave.mcprd.models.Rule value) throws IOException {
+        public void toJson(final JsonWriter writer, final Rule value) throws IOException {
             if (value == null) throw new NullPointerException("Cannot serialize null object!");
             writer.beginObject();
 

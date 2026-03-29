@@ -72,6 +72,7 @@ public record VersionManifest(VersionManifest.Latest latest, Version[] versions)
 
             @Override
             public void toJson(final JsonWriter writer, final Latest value) throws IOException {
+                //TODO Might as well implement this....
             }
 
         }
@@ -109,6 +110,7 @@ public record VersionManifest(VersionManifest.Latest latest, Version[] versions)
 
             @Override
             public void toJson(final JsonWriter writer, final Version value) throws IOException {
+                //TODO Might as well implement this....
             }
 
         }

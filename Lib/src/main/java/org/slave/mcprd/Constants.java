@@ -1,5 +1,7 @@
 package org.slave.mcprd;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.UtilityClass;
 import org.jetbrains.annotations.NotNull;
 
@@ -15,16 +17,30 @@ public final class Constants {
 
     public record Maven(String group, String name, String version) {
 
-        public static Maven from(final String maven) {
+        public static Maven from(@NotNull final String maven) {
             String[] split = maven.split(":", 3);
             return new Maven(split[0], split[1], split[2]);
         }
 
         public static String to(@NotNull final Maven maven) {
-            return String.format("%s:%s:%s", maven.group(), maven.name(), maven.version());
+            return String.join(":", maven.group(), maven.name(), maven.version());
         }
 
     }
+
+	@RequiredArgsConstructor
+	public enum OS {
+
+		WINDOWS("Windows"),
+
+		LINUX("Linux"),
+
+		OSX("OSX");
+
+		@Getter
+		private final String name;
+
+	}
 
     static {
         DEBUG = Boolean.valueOf(

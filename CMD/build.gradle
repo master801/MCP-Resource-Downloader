@@ -6,6 +6,7 @@ dependencies {
     implementation(
             project(':Lib')
     )
+    testImplementation('junit:junit:4.13.2')
 }
 
 application {

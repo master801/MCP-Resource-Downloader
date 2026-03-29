@@ -17,8 +17,9 @@ public final class Main {
         Boolean linux = null;
         Boolean windows = null, w32 = null, w64 = null;
         Boolean osx = null;
-        boolean overwrite = false;
+        boolean useLocalAssets = false;
         boolean forge = false;
+        boolean overwrite = false;
         for(int i = 0; i < args.length; i++) {
             String arg = args[i];
             if (arg.equals("--mcp")) mcpDir = args[++i];
@@ -45,17 +46,19 @@ public final class Main {
             //TODO Make --help command
             //TODO Make general cache directory with validation instead of redownloading every time
 
+            if (arg.equals("--local-assets")) useLocalAssets = true;
+
             if (arg.equals("--forge")) forge = true;
 
             if (arg.equals("--overwrite")) overwrite = true;
         }
 
-        if (linux == null) linux = Constants.OS_NAME.startsWith("Linux");
-        if (windows == null) windows = Constants.OS_NAME.startsWith("Windows");
+        if (linux == null) linux = Constants.OS_NAME.toLowerCase().startsWith("linux");
+        if (windows == null) windows = Constants.OS_NAME.toLowerCase().startsWith("windows");
         if (w32 == null) w32 = Constants.OS_ARCH.endsWith("86");
         if (w64 == null) w64 = Constants.OS_ARCH.endsWith("64");
         if (osx == null) {
-            osx = Constants.OS_NAME.toLowerCase().contains("mac");//Mac OS users are completely fucked...
+            osx = Constants.OS_NAME.toLowerCase().contains("mac");
             if (osx) {
                 System.out.println("May you find light in Windows or Linux...");
                 System.out.println(Constants.OS_NAME);
@@ -63,6 +66,11 @@ public final class Main {
         }
 
         MCPRD mcprd = new MCPRD();
+        if (windows && mcVersion != null) {
+            //FIXME
+//            mcprd.getWindowsRegistryValues();
+//            mcprd.checkJavaVersionFromWindowsRegistry();
+        }
         try {
             mcprd.download(
                     mcpDir,
@@ -87,6 +95,8 @@ public final class Main {
                     resources,
 
                     forge,
+
+                    useLocalAssets,
 
                     overwrite
             );

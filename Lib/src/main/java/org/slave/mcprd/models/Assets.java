@@ -52,9 +52,7 @@ public record Assets(boolean map_to_resources, Map<String, Asset> objects, boole
             if (value == null) throw new NullPointerException("Cannot serialize a null object!");
             writer.beginObject();
             //Mojang's JSON has map_to_resources or virtual. Either may be missing - IDK why.
-            if (value.map_to_resources()) {
-                writer.name("map_to_resources").value(true);
-            }
+            if (value.map_to_resources()) writer.name("map_to_resources").value(true);
 
             writer.name("objects")
                     .beginObject();
@@ -65,9 +63,7 @@ public record Assets(boolean map_to_resources, Map<String, Asset> objects, boole
             }
             writer.endObject();
 
-            if (value.virtual()) {
-                writer.name("virtual").value(true);
-            }
+            if (value.virtual()) writer.name("virtual").value(true);
             writer.endObject();
         }
 

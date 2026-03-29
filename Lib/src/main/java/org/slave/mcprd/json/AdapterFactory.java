@@ -35,12 +35,13 @@ public final class AdapterFactory implements JsonAdapter.Factory {
         else if (type == Version.Library.Downloads.Artifact.class) return new Version.Library.Downloads.Artifact.Adapter();
         else if (type == Version.Library.Downloads.Classifiers.class) return new Version.Library.Downloads.Classifiers.Adapter(moshi);
         else if (type == Version.Library.Natives.class) return new Version.Library.Natives.Adapter();
-        else if (type == Rule.class) return new Rule.Adapter(moshi);
-        else if (type == Rule.Action.class) return new Rule.Action.Adapter();
-        else if (type == Rule.OS.class) return new Rule.OS.Adapter();
         else if (type == Version.Logging.class) return new Version.Logging.Adapter(moshi);
         else if (type == Version.Logging.Client.class) return new Version.Logging.Client.Adapter(moshi);
         else if (type == Version.Logging.Client.File.class) return new Version.Logging.Client.File.Adapter();
+
+        if (type == Rule.class) return new Rule.Adapter(moshi);
+        else if (type == Rule.Action.class) return new Rule.Action.Adapter();
+        else if (type == Rule.OS.class) return new Rule.OS.Adapter();
 
         if (type == Resources.class) return new Resources.Adapter(moshi);
         else if (type == Resources.ResourceObject.class) return new Resources.ResourceObject.Adapter();

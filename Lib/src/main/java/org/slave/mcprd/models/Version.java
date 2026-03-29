@@ -11,6 +11,7 @@ import org.slave.mcprd.Constants;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public record Version(
@@ -30,6 +31,11 @@ public record Version(
         String time,
         String type
 ) {
+
+	public Version.Library[] getNatives() {
+		return Arrays.stream(libraries()).filter(lib -> lib.natives() != null)
+				.toArray(Library[]::new);
+	}
 
     @RequiredArgsConstructor
     public static final class Adapter extends JsonAdapter<Version> {

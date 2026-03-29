@@ -4,7 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox alignment="CENTER" prefWidth="550.0" xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.slave.mcprd.gui.MCPRDController">
+<VBox alignment="CENTER" prefWidth="550.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.slave.mcprd.gui.MCPRDController">
    <children>
       <HBox alignment="CENTER">
          <children>
@@ -77,11 +77,11 @@
                      <HBox.margin>
                         <Insets right="10.0" />
                      </HBox.margin></CheckBox>
+                  <CheckBox fx:id="checkBoxLibraries" mnemonicParsing="false" selected="true" text="%key.checkBox.libraries" />
                   <CheckBox fx:id="checkBoxNatives" mnemonicParsing="false" selected="true" text="%key.button.natives">
                      <HBox.margin>
                         <Insets left="10.0" right="10.0" />
                      </HBox.margin></CheckBox>
-                  <CheckBox fx:id="checkBoxLibraries" mnemonicParsing="false" selected="true" text="%key.checkBox.libraries" />
                   <CheckBox fx:id="checkBoxResources" mnemonicParsing="false" selected="true" text="%key.button.resources">
                      <HBox.margin>
                         <Insets left="10.0" />
@@ -91,7 +91,7 @@
                   <Insets bottom="5.0" left="10.0" right="10.0" top="5.0" />
                </padding>
             </HBox>
-            <HBox alignment="CENTER">
+            <HBox fx:id="hBoxJars" alignment="CENTER">
                <children>
                   <CheckBox fx:id="checkBoxClient" mnemonicParsing="false" selected="true" text="%key.button.client">
                      <HBox.margin>
@@ -107,6 +107,39 @@
                <VBox.margin>
                   <Insets />
                </VBox.margin>
+               <padding>
+                  <Insets bottom="5.0" top="5.0" />
+               </padding>
+            </HBox>
+            <VBox fx:id="vBoxNatives" alignment="CENTER">
+               <children>
+                  <HBox fx:id="hBoxNativesPlatforms" alignment="CENTER" spacing="10.0">
+                     <children>
+                        <CheckBox fx:id="checkBoxWindows" mnemonicParsing="false" selected="true" text="%key.checkBox.windows" />
+                        <CheckBox fx:id="checkBoxLinux" mnemonicParsing="false" selected="true" text="%key.checkBox.linux" />
+                        <CheckBox fx:id="checkBoxOSX" mnemonicParsing="false" selected="true" text="%key.checkBox.osx" />
+                     </children>
+                     <padding>
+                        <Insets bottom="5.0" top="5.0" />
+                     </padding>
+                  </HBox>
+                  <HBox fx:id="hBoxNatives" alignment="CENTER" spacing="20.0">
+                     <padding>
+                        <Insets bottom="5.0" top="5.0" />
+                     </padding>
+                     <children>
+                        <ChoiceBox fx:id="choiceBoxNativesPlatform" prefWidth="100.0" />
+                        <ChoiceBox fx:id="choiceBoxNativesNative" prefWidth="150.0" />
+                        <ChoiceBox fx:id="choiceBoxNativesNativeVersion" prefWidth="150.0" />
+                     </children>
+                  </HBox>
+               </children>
+            </VBox>
+            <HBox fx:id="hBoxResources" alignment="CENTER" spacing="20.0">
+               <children>
+                  <RadioButton fx:id="radioButtonLocalAssets" mnemonicParsing="false" text="%key.radioButton.localAssets" />
+                  <RadioButton fx:id="radioButtonRemoteAssets" mnemonicParsing="true" text="%key.radioButton.remoteAssets" />
+               </children>
                <padding>
                   <Insets bottom="5.0" top="5.0" />
                </padding>

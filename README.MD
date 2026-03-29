@@ -14,15 +14,15 @@ Print out all Minecraft versions: `gradlew -p CMD run`<br/>
 - `--mcVersion` [`Minecraft version`]
   - The version of Minecraft to download resources (**REQUIRED**)
 - `--jars`
-  - If jar files should be downloaded (**NOT** required)
+  - If jar files should be downloaded (**OPTIONAL**)
 - `--client`
   - If the client jar should be downloaded (**REQUIRED** if `--jars` used)
 - `--server`
   - If the server jar should be downloaded (**REQUIRED** if `--jars` used)
 - `--libraries`
-  - If library jars should be downloaded (**NOT** required)
+  - If library jars should be downloaded (**OPTIONAL**)
 - `--natives`
-  - If natives should be downloaded and extracted (**NOT** required)
+  - If natives should be downloaded and extracted (**OPTIONAL**)
 - `--linux`
   - If Linux natives should be downloaded and extracted (**NOT** required even if `--natives` used)
 - `--windows`
@@ -34,11 +34,16 @@ Print out all Minecraft versions: `gradlew -p CMD run`<br/>
 - `--osx`
   - If OSX natives should be downloaded and extracted (**NOT** required even if `--natives` used)
 - `--resources`
-  - If resources (sound, music) should be downloaded (**NOT** required)
+  - If resources (sound, music) should be downloaded (**OPTIONAL**)
+- `--local-assets`
+  - If local assets from the `.minecraft` should be used instead of downloading from the servers.
+  - This will download the assets anyway, if it is missing from the `.minecraft` folder or fails the file hash check.
 - `--forge`
-  - Does extra things for Forge, specifically. `1.3.2`, `1.4.7` and `1.5.2` are the only compatible versions at this time.
+  - Does extra things for Forge, specifically.
+  - Versions `1.2.3`, `1.2.5`, `1.3.2`, `1.4.7`, `1.5.2`, `1.6.4` are the only compatible versions at this time.
+  - You are free to try other versions, but do not expect it to work.
 - `--overwrite`
-  - If downloaded files should be overwritten should one already exist (**NOT** required)
+  - If downloaded files should be overwritten should one already exist (**OPTIONAL**)
 
 ### Examples:
 `gradlew -p CMD run --args="--mcp mcp62 --mcVersion 1.2.5 --jars --client --libraries --natives --resources --overwrite"`<br/>
@@ -51,7 +56,7 @@ Print out all Minecraft versions: `gradlew -p CMD run`<br/>
 - I keep getting error `FileNotFoundException` `MCP directory "XXXXXX" does not exist!`!
   - Make sure when inputting the `--mcp` argument you're using either a relative location to the `CMD` folder
   (if MCP folder is in root directory -where `build.gradle` is-, use `../<MCP directory>`),
-  or an exact location of where the MCP folder is (ex: `C:\Users\User\Downloads\<MCP directory>`).
+  or an exact location of where the MCP folder is (ex: `C:\Users\<User>\Downloads\<MCP directory>`).
 
 ## GUI
 
@@ -61,26 +66,45 @@ Easier to use, however more limited than CMD.
 `gradlew -p GUI run`
 
 ## Supported versions:
-- [X] 1.19.2
-- [X] 1.12
-- [X] 1.8
-- [X] 1.7.10
-- [X] 1.6.4
-- [X] 1.5.2 (Forge)
-- [X] 1.4.7 (Forge)
-- [X] 1.3.2 (Forge)
-- [X] 1.2.5 (Forge)
-- [X] 1.2.3 (Forge)
+- 1.19.2
+  - [X] Vanilla
+- 1.12
+    - [X] Vanilla
+- 1.8
+    - [X] Vanilla
+- 1.7.10
+    - [X] Vanilla
+- 1.6.2
+  - [ ] Forge
+    - Doesn't work due to MCP-RD not patching files - do NOT expect resolved issues on GitHub
+- 1.6.4
+    - [X] Vanilla
+    - [X] Forge
+- 1.5.2
+    - [X] Vanilla
+    - [X] Forge
+- 1.4.7
+    - [X] Vanilla
+    - [X] Forge
+- 1.3.2
+    - [X] Vanilla
+    - [X] Forge
+- 1.2.5
+    - [X] Vanilla
+    - [X] Forge
+- 1.2.3
+    - [X] Vanilla
+    - [X] Forge
+- Older
+  - Maybe?
 
 ## Known Issues:
-- Server jar can't decompile
-  - This is due to Mojang hotfixing server jars years later. This is an MCP problem.
 - Certain versions aren't working
-  - Create a new issue with the specific version (both Minecraft and MCP) you're having troubles with.
+  - Create a new GitHub issue with the specific version (both Minecraft and MCP) you're having troubles with.
 - Mac OS (OSX) users may not have natives extracted
-  - Create a new issue. I don't have a Mac, so this cannot be tested.
+  - Create a new issue.
 
-Found an issue? Create a new GitHub issue.
+Found an issue? Create a new issue on GitHub.
 
 ## Workarounds:
 - 1.8+
@@ -91,19 +115,23 @@ Found an issue? Create a new GitHub issue.
     - Manually run the decompile script with
     `runtime/bin/python/python_mcp runtime/decompile.py --nocopy --client` (Windows: `runtime\bin\python\python_mcp.exe runtime\decompile.py --nocopy --client`)
     (in MCP directory) after running MCP-RD in client mode.
+- 1.6
+  - MCP can't decompile
+    - Manually run `install.cmd` in command prompt or terminal
+      - `install.cmd --no-assets` (Windows)
 - Mac OS (OSX) users may not have natives extracted
   - Manually extract jars files
 
 ## Dependencies:
 [Moshi 1.15.1](https://github.com/square/moshi)<br/>
-[Lombok 1.18.34](https://projectlombok.org/)<br/>
-JavaFX 17 (controls, fxml)<br/>
+[Lombok 1.18.44](https://projectlombok.org/)<br/>
+JavaFX 21 (controls, fxml)<br/>
 
 ## Built with:
-[JetBrains IntelliJ Community Edition 2024.1.4](https://www.jetbrains.com/idea/)<br/>
-[Eclipse Temurin JDK 17.0.11.9](https://adoptium.net/temurin/releases/?version=17)<br/>
-[Gradle 8.9](https://gradle.org/)<br/>
-[Lombok Gradle Plugin 8.6](https://plugins.gradle.org/plugin/io.freefair.lombok)<br/>
+[JetBrains IntelliJ Community Edition 2026.1](https://www.jetbrains.com/idea/)<br/>
+[Eclipse Temurin JDK 21.0.4.7 (LTS)](https://adoptium.net/temurin/releases/?version=21)<br/>
+[Gradle 9.4.1](https://gradle.org/)<br/>
+[Lombok Gradle Plugin 9.2.0](https://plugins.gradle.org/plugin/io.freefair.lombok)<br/>
 [JavaFX Plugin 0.1.0](https://plugins.gradle.org/plugin/org.openjfx.javafxplugin)<br/>
 
 ## License
