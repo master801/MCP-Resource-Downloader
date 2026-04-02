@@ -12,7 +12,7 @@
 .mtj.tmp/
 
 # Package Files #
-#*.jar
+*.jar
 *.war
 *.nar
 *.ear
@@ -173,3 +173,5 @@ gradle-app.setting
 /CMD/src/test/java/org/slave/mcprd/cmd/test/Constants.java
 #I don't know why this is created here, but it is...
 /CMD/Test
+
+!/Lib/src/main/resources/*

@@ -34,7 +34,7 @@ public final class AppMCPRD extends Application {
                         new Image(is)
                 );
             } else {
-                System.out.println("Failed to set window icon because file is not existent?!");
+                System.out.println("Failed to set window icon because file is non-existent?!");
             }
         }
         fxmlController.init(primaryStage, resourceBundle);

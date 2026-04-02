@@ -7,8 +7,6 @@ import com.squareup.moshi.Moshi;
 import lombok.RequiredArgsConstructor;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public record VersionManifest(VersionManifest.Latest latest, Version[] versions) {
 
@@ -19,42 +17,41 @@ public record VersionManifest(VersionManifest.Latest latest, Version[] versions)
 
         @Override
         public VersionManifest fromJson(final JsonReader reader) throws IOException {
-            reader.setLenient(true);
-
             Latest latest = null;
-            List<Version> versions = new ArrayList<>();
+			Version[] versions = null;
 
             reader.beginObject();
             while(reader.hasNext()) {
                 switch (reader.nextName()) {
                     case "latest" -> latest = moshi.adapter(Latest.class).fromJson(reader);
-                    case "versions" -> {
-                        reader.beginArray();
-                        while(reader.hasNext()) {
-                            versions.add(
-                                    moshi.adapter(Version.class).fromJson(reader)
-                            );
-                        }
-                        reader.endArray();
-                    }
+                    case "versions" -> versions = moshi.adapter(Version[].class).fromJson(reader);
                 }
             }
             reader.endObject();
-            return new VersionManifest(latest, versions.toArray(new Version[0]));
+            return new VersionManifest(latest, versions);
         }
 
         @Override
         public void toJson(final JsonWriter writer, final VersionManifest value) throws IOException {
+			if (value == null) throw new NullPointerException("Cannot serialize null object!");
+			writer.beginObject();
+
+			writer.name("latest");
+			moshi.adapter(Latest.class)
+					.toJson(writer, value.latest());
+
+			writer.name("versions");
+			moshi.adapter(Version[].class)
+					.toJson(writer, value.versions());
+
+			writer.endObject();
         }
 
     }
 
     public record Latest(String release, String snapshot) {
 
-        @RequiredArgsConstructor
         public static final class Adapter extends JsonAdapter<Latest> {
-
-            private final Moshi moshi;
 
             @Override
             public Latest fromJson(final JsonReader reader) throws IOException {
@@ -72,7 +69,13 @@ public record VersionManifest(VersionManifest.Latest latest, Version[] versions)
 
             @Override
             public void toJson(final JsonWriter writer, final Latest value) throws IOException {
-                //TODO Might as well implement this....
+				if (value == null) throw new NullPointerException("Cannot serialize null object!");
+				writer.beginObject();
+				writer.name("release")
+						.value(value.release());
+				writer.name("snapshot")
+						.value(value.snapshot());
+				writer.endObject();
             }
 
         }
@@ -81,12 +84,10 @@ public record VersionManifest(VersionManifest.Latest latest, Version[] versions)
 
     public record Version(String id, String type, String url, String time, String releaseTime, String sha1, int complianceLevel) {
 
-        public static final String TYPE_RELEASE = "release", TYPE_SNAPSHOT = "snapshot";
+        public static final String TYPE_RELEASE = "release", TYPE_SNAPSHOT = "snapshot", TYPE_OLD_BETA = "old_beta", TYPE_OLD_ALPHA = "old_alpha";
 
         @RequiredArgsConstructor
         public static final class Adapter extends JsonAdapter<Version> {
-
-            private final Moshi moshi;
 
             @Override
             public Version fromJson(final JsonReader reader) throws IOException {
@@ -110,7 +111,25 @@ public record VersionManifest(VersionManifest.Latest latest, Version[] versions)
 
             @Override
             public void toJson(final JsonWriter writer, final Version value) throws IOException {
-                //TODO Might as well implement this....
+				if (value == null) throw new NullPointerException("Cannot serialize null object!");
+				writer.beginObject();
+
+				writer.name("id")
+						.value(value.id());
+				writer.name("type")
+						.value(value.type());
+				writer.name("url")
+						.value(value.url());
+				writer.name("time")
+						.value(value.time());
+				writer.name("releaseTime")
+						.value(value.releaseTime());
+				writer.name("sha1")
+						.value(value.sha1());
+				writer.name("complianceLevel")
+						.value(value.complianceLevel());
+
+				writer.endObject();
             }
 
         }

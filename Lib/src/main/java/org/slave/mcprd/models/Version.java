@@ -17,7 +17,7 @@ import java.util.List;
 public record Version(
         Version.Arguments arguments,
         AssetIndex assetIndex,
-        Version.Assets assets,
+        String assets,
         int complianceLevel,
         Version.Downloads downloads,
         String id,
@@ -46,7 +46,7 @@ public record Version(
         public Version fromJson(final JsonReader reader) throws IOException {
             Version.Arguments arguments = null;
             AssetIndex assetIndex = null;
-            Version.Assets assets = null;
+            String assets = null;
             int complianceLevel = -1;
             Version.Downloads downloads = null;
             String id = null;
@@ -62,7 +62,7 @@ public record Version(
                 switch (reader.nextName()) {
                     case "arguments" -> arguments = moshi.adapter(Version.Arguments.class).fromJson(reader);
                     case "assetIndex" -> assetIndex = moshi.adapter(AssetIndex.class).fromJson(reader);
-                    case "assets" -> assets = moshi.adapter(Version.Assets.class).fromJson(reader);
+                    case "assets" -> assets = reader.nextString();
                     case "complianceLevel" -> complianceLevel = reader.nextInt();
                     case "downloads" -> downloads = moshi.adapter(Downloads.class).fromJson(reader);
                     case "id" -> id = reader.nextString();
@@ -112,9 +112,11 @@ public record Version(
             moshi.adapter(Version.AssetIndex.class)
                     .toJson(writer, value.assetIndex());
 
-            writer.name("assets");
-            moshi.adapter(Version.Assets.class)
-                    .toJson(writer, value.assets());
+            writer.name("assets")
+					.value(value.assets());
+
+			writer.name("complianceLevel")
+					.value(value.complianceLevel());
 
             writer.name("downloads");
             moshi.adapter(Version.Downloads.class)
@@ -122,6 +124,10 @@ public record Version(
 
             writer.name("id")
                     .value(value.id());
+
+			writer.name("javaVersion");
+			moshi.adapter(JavaVersion.class)
+					.toJson(writer, value.javaVersion());
 
             writer.name("libraries");
             moshi.adapter(Version.Library[].class)
@@ -138,7 +144,7 @@ public record Version(
 
             if (value.minecraftArguments() != null) {//may be null [for 1.16+]
                 writer.name("minecraftArguments")
-                        .value(value.minecraftArguments());
+						.value(value.minecraftArguments());
             }
 
             writer.name("minimumLauncherVersion")
@@ -157,7 +163,7 @@ public record Version(
         }
     }
 
-    public record Arguments(Version.Arguments.Argument[] game, Version.Arguments.Argument[] jvm) {
+    public record Arguments(Version.Arguments.Argument[] defaultUserJVM, Version.Arguments.Argument[] game, Version.Arguments.Argument[] jvm) {
 
         @RequiredArgsConstructor
         public static final class Adapter extends JsonAdapter<Arguments> {
@@ -168,23 +174,30 @@ public record Version(
             public Arguments fromJson(final JsonReader reader) throws IOException {
                 reader.beginObject();
 
+                Version.Arguments.Argument[] defaultUserJVM = null;
                 Version.Arguments.Argument[] game = null;
                 Version.Arguments.Argument[] jvm = null;
                 while(reader.hasNext()) {
                     switch(reader.nextName()) {
+                        case "default-user-jvm" -> defaultUserJVM = moshi.adapter(Version.Arguments.Argument[].class).fromJson(reader);
                         case "game" -> game = moshi.adapter(Version.Arguments.Argument[].class).fromJson(reader);
                         case "jvm" -> jvm = moshi.adapter(Version.Arguments.Argument[].class).fromJson(reader);
                     }
                 }
 
                 reader.endObject();
-                return new Arguments(game, jvm);
+                return new Arguments(defaultUserJVM, game, jvm);
             }
 
             @Override
             public void toJson(final JsonWriter writer, final Arguments value) throws IOException {
                 if (value == null) throw new NullPointerException("Cannot serialize null object!");
                 writer.beginObject();
+
+				if (value.defaultUserJVM() != null) {
+					writer.name("default-user-jvm");
+					moshi.adapter(Version.Arguments.Argument[].class).toJson(writer, value.defaultUserJVM());
+				}
 
                 writer.name("game");
                 moshi.adapter(Version.Arguments.Argument[].class).toJson(writer, value.game());
@@ -229,19 +242,17 @@ public record Version(
                         case BEGIN_OBJECT -> {
                             Rule[] rules = null;
                             Version.Arguments.Argument.Value value = null;
+
                             reader.beginObject();
                             while(reader.hasNext()) {
                                 switch(reader.nextName()) {
-                                    case "rules" -> rules = moshi.adapter(Rule[].class).fromJson(reader);
-                                    case "value" -> value = moshi.adapter(Version.Arguments.Argument.Value.class).fromJson(reader);
-                                }
+									case "rules" -> rules = moshi.adapter(Rule[].class).fromJson(reader);
+									case "value" -> value = moshi.adapter(Version.Arguments.Argument.Value.class).fromJson(reader);
+								}
                             }
                             reader.endObject();
-                            if (rules != null && value != null) {
-                                argument = new Version.Arguments.Argument(rules, value);
-                            } else {
-                                throw new RuntimeException("Failed to deserialize \"rules\" object!");
-                            }
+
+							argument = new Version.Arguments.Argument(rules, value);
                         }
                         default -> throw new RuntimeException("Found unexpected argument while parsing!");
                     }
@@ -253,18 +264,18 @@ public record Version(
                     if (value == null) throw new NullPointerException("Cannot serialize null object!");
                     if (value.getArgument() != null) {
                         writer.value(value.getArgument());
-                    } else if (value.getRules() != null && value.getValue() != null) {
-                        writer.beginObject();
+                    } else {
+						writer.beginObject();
 
-                        writer.name("rules");
-                        moshi.adapter(Rule[].class)
-                                .toJson(writer, value.getRules());
+						writer.name("rules");
+						moshi.adapter(Rule[].class)
+								.toJson(writer, value.getRules());
 
-                        writer.name("value");
-                        moshi.adapter(Version.Arguments.Argument.Value.class)
-                                .toJson(writer, value.getValue());
+						writer.name("value");
+						moshi.adapter(Version.Arguments.Argument.Value.class)
+								.toJson(writer, value.getValue());
 
-                        writer.endObject();
+						writer.endObject();
                     }
                 }
 
@@ -374,38 +385,6 @@ public record Version(
 
     }
 
-    @RequiredArgsConstructor
-    public enum Assets {
-
-        PRE_1_6("pre-1.6"),//1.5.2 and lower
-
-        LEGACY("legacy"),//1.6
-
-        NEWER(null);//Anything past 1.6
-
-        public final String assets;
-
-        public static final class Adapter extends JsonAdapter<Version.Assets> {//For the lulz
-
-            @Override
-            public Assets fromJson(final JsonReader reader) throws IOException {
-                String assetsString = reader.nextString();
-                for(Version.Assets assets : Version.Assets.values()) {
-                    if (assets.assets != null && assets.assets.equals(assetsString)) return assets;
-                }
-                return Assets.NEWER;
-            }
-
-            @Override
-            public void toJson(final JsonWriter writer, final Assets value) throws IOException {
-                if (value == null) throw new NullPointerException("Cannot serialize null object!");
-                writer.value(value.assets);
-            }
-
-        }
-
-    }
-
     public record Downloads(Version.Downloads.Download client, @Nullable Version.Downloads.Download client_mappings, Version.Downloads.Download server, @Nullable Version.Downloads.Download windows_server, @Nullable Version.Downloads.Download server_mappings) {
 
         @RequiredArgsConstructor
@@ -449,9 +428,11 @@ public record Version(
                             .toJson(writer, value.client_mappings());
                 }
 
-                writer.name("server");
-                moshi.adapter(Downloads.Download.class)
-                        .toJson(writer, value.server());
+				if (value.server() != null) {//Really old versions do not have the server jar available
+					writer.name("server");
+					moshi.adapter(Downloads.Download.class)
+							.toJson(writer, value.server());
+				}
 
                 if (value.windows_server() != null) {
                     writer.name("windows_server");

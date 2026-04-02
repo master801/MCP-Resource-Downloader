@@ -71,7 +71,13 @@ public final class Main {
 //            mcprd.getWindowsRegistryValues();
 //            mcprd.checkJavaVersionFromWindowsRegistry();
         }
-        try {
+		try {
+			mcprd.setVersion(mcVersion);
+	    } catch (IOException e) {
+			throw new RuntimeException("Failed to set version!", e);
+		}
+
+		try {
             mcprd.download(
                     mcpDir,
 
@@ -101,7 +107,7 @@ public final class Main {
                     overwrite
             );
         } catch (IOException e) {
-            throw new RuntimeException("Failed to download MCP resources !", e);
+            throw new RuntimeException("Failed to download MCP resources!", e);
         }
     }
 

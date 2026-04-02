@@ -15,6 +15,8 @@ public final class Constants {
 
     public static final String OS_NAME, OS_VERSION, OS_ARCH;
 
+	public static final String ASSETS_LEGACY = "legacy", ASSETS_PRE_1_6 = "pre-1.6";
+
     public record Maven(String group, String name, String version) {
 
         public static Maven from(@NotNull final String maven) {
@@ -35,7 +37,7 @@ public final class Constants {
 
 		LINUX("Linux"),
 
-		OSX("OSX");
+		MAC("Mac");
 
 		@Getter
 		private final String name;

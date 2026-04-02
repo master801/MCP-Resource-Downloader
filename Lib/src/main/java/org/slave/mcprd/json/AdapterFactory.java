@@ -17,14 +17,13 @@ public final class AdapterFactory implements JsonAdapter.Factory {
     @Override
     public JsonAdapter<?> create(final Type type, final Set<? extends Annotation> annotations, final Moshi moshi) {
         if (type == VersionManifest.class) return new VersionManifest.Adapter(moshi);
-        else if (type == VersionManifest.Latest.class) return new VersionManifest.Latest.Adapter(moshi);
-        else if (type == VersionManifest.Version.class) return new VersionManifest.Version.Adapter(moshi);
+        else if (type == VersionManifest.Latest.class) return new VersionManifest.Latest.Adapter();
+        else if (type == VersionManifest.Version.class) return new VersionManifest.Version.Adapter();
 
         if (type == Version.class) return new Version.Adapter(moshi);
         else if (type == Version.Arguments.class) return new Version.Arguments.Adapter(moshi);
         else if (type == Version.Arguments.Argument.class) return new Version.Arguments.Argument.Adapter(moshi);
         else if (type == Version.Arguments.Argument.Value.class) return new Version.Arguments.Argument.Value.Adapter();
-        else if (type == Version.Assets.class) return new Version.Assets.Adapter();
         else if (type == Version.AssetIndex.class) return new Version.AssetIndex.Adapter();
         else if (type == Version.Downloads.class) return new Version.Downloads.Adapter(moshi);
         else if (type == Version.Downloads.Download.class) return new Version.Downloads.Download.Adapter();
@@ -41,7 +40,8 @@ public final class AdapterFactory implements JsonAdapter.Factory {
 
         if (type == Rule.class) return new Rule.Adapter(moshi);
         else if (type == Rule.Action.class) return new Rule.Action.Adapter();
-        else if (type == Rule.OS.class) return new Rule.OS.Adapter();
+        else if (type == Rule.OS.class) return new Rule.OS.Adapter(moshi);
+        else if (type == Rule.OS.VersionRange.class) return new Rule.OS.VersionRange.Adapter();
 
         if (type == Resources.class) return new Resources.Adapter(moshi);
         else if (type == Resources.ResourceObject.class) return new Resources.ResourceObject.Adapter();

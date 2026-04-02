@@ -35,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -224,7 +225,13 @@ public final class MCPRD {
                                 new String[] {
                                         "scala-library.jar",
                                         "https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.10.0/scala-library-2.10.0.jar"
-                                }
+                                },
+
+								//Do not download. This is never used so it doesn't matter.
+//								new String[] {
+//										"asm-4.1.tar.gz",
+//										""
+//								}
                         },
                         new String[][] {//jar lib
                                 new String[] {
@@ -338,31 +345,94 @@ public final class MCPRD {
         return split[1].trim().split(" {4}")[2];
     }
 
+	public void init() throws RuntimeException, IOException {
+		if (Constants.DEBUG) {
+			URI uri;
+			try {
+				uri = new URI(Constants.URL_VERSION_MANIFEST_V2);
+				downloadFile(uri, new File(".", "DEBUG.VERSION_MANIFEST.JSON"), null, -1, true);
+			} catch(URISyntaxException e) {
+				System.out.println(
+						String.format("Caught exception while downloading version manifest! \"%s\"", e)
+				);
+			}
+		}
+
+		if (this.versionManifest == null) {
+			try {
+				System.out.println("Getting \"version_manifest_v2.json\"...");
+				getVersionManifest();
+			} catch(IOException e) {
+				throw new RuntimeException("Failed to get \"version_manifest_v2.json\" due to an IO Exception!", e);
+			}
+			System.out.println(
+					String.format("Done getting version manifest.%s", System.lineSeparator())
+			);
+		}
+	}
+
+	public boolean setVersion(final String mcVersion) throws RuntimeException, IOException {
+		if (mcVersion == null || mcVersion.isEmpty()) return false;
+
+		VersionManifest.Version manifestVersion;
+		if (this.versionManifest != null) {
+			manifestVersion = Arrays.stream(versionManifest.versions())
+					.filter(i -> i.id().equals(mcVersion))
+					.findFirst()
+					.orElse(null);
+		} else {
+			throw new RuntimeException("VersionManifest not set!");
+		}
+		if (manifestVersion != null) {
+			if (version == null || !mcVersion.equals(version.id())) {
+				if (Constants.DEBUG) {
+					try {
+						downloadFile(
+								new URI(manifestVersion.url()),
+								new File(".", "DEBUG.VERSION.JSON"),
+								null,
+								-1,
+								true
+						);
+					} catch (URISyntaxException e) {
+						throw new RuntimeException(e);
+					}
+				}
+
+				System.out.println("Getting version JSON...");
+				try {
+					version = getVersion(manifestVersion);
+				} catch(IOException e) {
+					throw new RuntimeException("Failed to get version!", e);
+				}
+				System.out.println(
+						String.format("Done getting version JSON.%s", System.lineSeparator())
+				);
+
+				if (Constants.DEBUG) {
+					try {
+						Files.writeString(
+								new File(".", "DEBUG.VERSION.RECONSTRUCTED.JSON").toPath(),
+								moshi.adapter(Version.class)
+										.indent("  ")
+										.toJson(version),
+								StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE
+						);
+					} catch (IOException e) {
+						throw new RuntimeException(e);
+					}
+				}
+				return true;
+			}
+		} else {
+			throw new NullPointerException("Failed to get version?!");
+		}
+		return false;
+	}
+
     @SuppressWarnings("ConstantValue")
     public void download(final String mcpDir, final String mcVersion, final boolean ignoreMCP, final boolean dlJars, final boolean clientOnly, final boolean serverOnly, final boolean dlLibraries, final boolean dlNatives, final boolean linux, final boolean windows, final boolean w32, final boolean w64, final boolean osx, final boolean dlResources, final boolean forge, final boolean useLocalAssets, final boolean overwrite) throws RuntimeException, IOException {
-        if (Constants.DEBUG) {
-            URI uri;
-            try {
-                uri = new URI(Constants.URL_VERSION_MANIFEST_V2);
-                downloadFile(uri, new File(".", "DEBUG.VERSION_MANIFEST.JSON"), null, -1, true);
-            } catch (URISyntaxException e) {
-                System.out.println(
-                        String.format("Caught exception while downloading version manifest! \"%s\"", e)
-                );
-            }
-        }
-
-        if (this.versionManifest == null) {
-            try {
-                System.out.println("Getting \"version_manifest_v2.json\"...");
-                getVersionManifest();
-            } catch(IOException e) {
-                throw new RuntimeException("Failed to get \"version_manifest_v2.json\" due to an IO Exception!", e);
-            }
-            System.out.println(
-                    String.format("Done getting version manifest.%s", System.lineSeparator())
-            );
-        }
+		if (versionManifest == null) throw new NullPointerException("Version manifest not initialized!");
 
         if (mcpDir == null && mcVersion == null) {//Just print out all versions
             System.out.println(
@@ -370,7 +440,6 @@ public final class MCPRD {
             );
             for(VersionManifest.Version version : versionManifest.versions()) {
                 String year = version.releaseTime().substring(0, 4), month = version.releaseTime().substring(5, 7), day = version.releaseTime().substring(8, 10);
-
                 System.out.println(
                         String.format("%s - %s/%s/%s", version.id(), month, day, year)
                 );
@@ -383,42 +452,6 @@ public final class MCPRD {
 
         if (mcpDir == null) throw new FileNotFoundException("No MCP directory was set!");
         if (mcVersion == null) throw new NullPointerException("No Minecraft version was set!");
-
-        VersionManifest.Version manifestVersion = null;
-        for(VersionManifest.Version i : versionManifest.versions()) {
-            if(i.id().equals(mcVersion)) {
-                manifestVersion = i;
-                break;
-            }
-        }
-
-        if (manifestVersion != null) {
-            if (version == null || !mcVersion.equals(version.id())) {
-                if (Constants.DEBUG) {
-                    try {
-                        downloadFile(
-                                new URI(manifestVersion.url()),
-                                new File(".", "DEBUG.MANIFEST_VERSION.JSON"),
-                                null,
-                                -1,
-                                true
-                        );
-                    } catch (URISyntaxException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-
-                System.out.println("Getting version JSON...");
-                try {
-                    version = getVersion(manifestVersion);
-                } catch(IOException e) {
-                    throw new RuntimeException("Failed to get version!", e);
-                }
-                System.out.println(
-                        String.format("Done getting version JSON.%s", System.lineSeparator())
-                );
-            }
-        }
 
         if (version == null) throw new NullPointerException("Failed to get version?!");
 
@@ -447,8 +480,8 @@ public final class MCPRD {
         }
 
         switch (version.assets()) {
-            case LEGACY -> dirMCPJarsBinNatives = new File(dirMCPJarsVersionsID, String.format("%s-natives", version.id()));
-            case PRE_1_6 -> {
+			case Constants.ASSETS_LEGACY -> dirMCPJarsBinNatives = new File(dirMCPJarsVersionsID, String.format("%s-natives", version.id()));
+			case Constants.ASSETS_PRE_1_6 -> {
                 if (!dirMCPJarsLib.exists() && !dirMCPJarsLib.mkdirs()) {
                     System.out.println(
                             String.format("Failed to make directory \"%s\"!", dirMCPJarsLib.getAbsolutePath())
@@ -456,25 +489,24 @@ public final class MCPRD {
                 }
                 dirMCPJarsBinNatives = new File(dirMCPJarsBin, "natives");
             }
-            case NEWER -> {
-                dirMCPJarsBinNatives = new File(dirMCPJarsVersionsID, String.format("%s-natives", version.id()));
-                System.out.println(
-                        String.format("Potentially unexpected version \"%s\"!%s", version.id(), System.lineSeparator())
-                );
-            }
-            default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!?", version.assets().assets));
+			default -> {
+				dirMCPJarsBinNatives = new File(dirMCPJarsVersionsID, String.format("%s-natives", version.id()));
+				System.out.println(
+						String.format("Potentially unexpected version \"%s\"!%s", version.id(), System.lineSeparator())
+				);
+			}
         }
 
 		//<editor-fold desc="Jars">
         if (dlJars) {
             System.out.println("Downloading jar files...\n");
             switch(version.assets()) {
-                case PRE_1_6 -> {
+				case Constants.ASSETS_PRE_1_6 -> {
                     if (!dirMCPJarsBin.exists()) {
                         if (!dirMCPJarsBin.mkdir()) throw new IOException(String.format("Could not create directory \"%s\"!", dirMCPJarsBin.getPath()));
                     }
                 }
-                case LEGACY, NEWER -> {
+                default -> {
                     if (!dirMCPJarsVersions.exists()) {
                         if (!dirMCPJarsVersions.mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", dirMCPJarsVersions.getPath()));
                     }
@@ -482,7 +514,6 @@ public final class MCPRD {
                         if (!dirMCPJarsVersionsID.mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", dirMCPJarsVersionsID.getPath()));
                     }
                 }
-                default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!", version.assets().assets));
             }
             downloadMinecraftJars(dirMCPJars, dirMCPJarsBin, dirMCPJarsVersionsID, fileMCPConfCfg, version, forge, clientOnly, serverOnly, overwrite);
             System.out.println(
@@ -497,19 +528,18 @@ public final class MCPRD {
 
             File dir;
             switch(version.assets()) {
-                case PRE_1_6 -> {
+				case Constants.ASSETS_PRE_1_6 -> {
                     if (!dirMCPJarsBin.exists()) {
                         if (!dirMCPJarsBin.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirMCPJarsBin.getPath()));
                     }
                     dir = dirMCPJarsBin;
                 }
-                case LEGACY, NEWER -> {
+                default -> {
                     if (!dirMCPJarsLibraries.exists()) {
                         if (!dirMCPJarsLibraries.mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", dirMCPJarsLibraries.getPath()));
                     }
                     dir = dirMCPJarsLibraries;
                 }
-                default -> throw new RuntimeException(String.format("Unexpected assets ID \"%s\"!", version.assets().assets));
             }
             downloadLibraries(dir, version, forge, linux, windows, osx, overwrite);
             if (forge) {
@@ -525,7 +555,7 @@ public final class MCPRD {
                     );
                 }
 
-                if (version.assets().equals(Version.Assets.PRE_1_6)) {
+                if (version.assets().equals(Constants.ASSETS_PRE_1_6)) {
                     System.out.println("Patching FML library hashes...");
                     if (patchFMLHashes(version, dirMCP)) {
                         System.out.println(
@@ -581,7 +611,7 @@ public final class MCPRD {
                 if (!dirAssets.exists()) {
                     if (!dirAssets.mkdirs()) throw new IOException(String.format("Could not create directory \"%s\"!", dirAssets.getPath()));
                 }
-                if (version.assets() == Version.Assets.LEGACY) {//legacy does not use the index system
+                if (version.assets() == Constants.ASSETS_LEGACY) {//legacy does not use the index system
                     dir = dirAssets;
                 } else {
                     if (!dirAssetsIndexes.exists()) {
@@ -639,9 +669,10 @@ public final class MCPRD {
                 throw new RuntimeException(e);
             }
 
-            if (version.assets() == Version.Assets.PRE_1_6) {//dir expects to be "jars/bin"
+            if (version.assets().equals(Constants.ASSETS_PRE_1_6)) {//dir expects to be "jars/bin"
                 dest = new File(dirJarsBin, "minecraft.jar");
-            } else if (version.assets() == Version.Assets.LEGACY || version.assets() == Version.Assets.NEWER) {//dir expects to be "jars"
+//            } else if (version.assets() == Version.Assets.LEGACY || version.assets() == Version.Assets.NEWER) {//dir expects to be "jars"
+            } else {//dir expects to be "jars"
                 dest = new File(dirJarsVersionsID, String.format("%s.jar", version.id()));
                 serializeJSON(
                         new File(dirJarsVersionsID, String.format("%s.json", version.id())),
@@ -649,8 +680,6 @@ public final class MCPRD {
                         version,
                         overwrite
                 );//Serialize instead of downloading to avoid additional network calls
-            } else {
-                throw new RuntimeException("Failed to download client jar due to unexpected asset ID!");
             }
 
             System.out.println("Downloading client jar...");
@@ -671,12 +700,17 @@ public final class MCPRD {
                 } catch (URISyntaxException e) {
                     throw new RuntimeException(e);
                 }
-                String fn;
-                if (forge && (!version.assets().equals(Version.Assets.PRE_1_6) && !version.assets().equals(Version.Assets.NEWER))) {
-                    fn = String.format("minecraft_server.%s.jar", version.id());
-                } else {
-                    fn = "minecraft_server.jar";
-                }
+                String fn = "minecraft_server.jar";
+				if (forge) {
+					if (version.assets().equals(Constants.ASSETS_LEGACY)) {
+						fn = String.format("minecraft_server.%s.jar", version.id());
+					}
+				}
+//                if (forge && (!version.assets().equals(Version.Assets.PRE_1_6) && !version.assets().equals(Version.Assets.NEWER))) {
+//                    fn = String.format("minecraft_server.%s.jar", version.id());
+//                } else {
+//                    fn = "minecraft_server.jar";
+//                }
                 dest = new File(dirJars, fn);
                 System.out.println("Downloading server jar...");
                 try {
@@ -1035,10 +1069,10 @@ public final class MCPRD {
 
             File fileLibrary;
             switch(version.assets()) {
-                case PRE_1_6 -> {//dir should be jars/bin
+				case Constants.ASSETS_PRE_1_6 -> {//dir should be jars/bin
                     fileLibrary = new File(dir, String.format("%s.jar", library.name().name()));
                 }
-                case LEGACY, NEWER -> {//dir should be jars/libraries
+				default -> {//dir should be jars/libraries
                     if (library.downloads().artifact() != null) {
                         fileLibrary = new File(dir, library.downloads().artifact().path());
                         if (!fileLibrary.getParentFile().exists()) {
@@ -1048,7 +1082,6 @@ public final class MCPRD {
                         continue;
                     }
                 }
-                default -> throw new RuntimeException(String.format("Unexpected asset! \"%s\"", version.assets()));
             }
 
             try {
@@ -1128,7 +1161,7 @@ public final class MCPRD {
         for(Entry<String, Asset> entry : assets.objects().entrySet()) {
             //TODO useLocalAssets
             File file = null;
-            if (assets.map_to_resources() || (version.assets() == Version.Assets.LEGACY && assets.virtual())) {
+            if (assets.map_to_resources() || (version.assets().equals(Constants.ASSETS_LEGACY) && assets.virtual())) {
                 file = new File(dir, entry.getKey());//dir is expected to be set to "jars/resources", or "jars/assets" if not proper and virtual
                 if (!file.getParentFile().exists()) {
                     if (!file.getParentFile().mkdirs()) throw new RuntimeException(String.format("Failed to create directory \"%s\"!", file.getParentFile().getPath()));
@@ -1557,12 +1590,27 @@ public final class MCPRD {
                 URI uri = new URI(Constants.URL_VERSION_MANIFEST_V2);
                 String fetchedJSON = fetchJSON(uri);
                 if (!fetchedJSON.isEmpty()) {
-                    return versionManifest = moshi.adapter(VersionManifest.class)
+                    versionManifest = moshi.adapter(VersionManifest.class)
                             .fromJson(fetchedJSON);
                 }
             } catch (URISyntaxException e) {
                 throw new IOException(e);
             }
+			if (versionManifest != null) {
+				if (Constants.DEBUG) {
+					try {
+						Files.writeString(
+								new File(".", "DEBUG.VERSION_MANIFEST.RECONSTRUCTED.JSON").toPath(),
+								moshi.adapter(VersionManifest.class)
+										.indent("  ")
+										.toJson(versionManifest),
+								StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE
+						);
+					} catch (IOException e) {
+						throw new RuntimeException(e);
+					}
+				}
+			}
         }
         return versionManifest;
     }
@@ -1661,6 +1709,7 @@ public final class MCPRD {
                 try(OutputStreamWriter outputStreamWriter = new OutputStreamWriter(fileOutputStream)) {
                     outputStreamWriter.write(
                             moshi.adapter(classObject)
+									.indent("  ")
                                     .toJson(object)
                     );
                 }
